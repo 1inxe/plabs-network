@@ -28,7 +28,7 @@
     "clsx": "^2.1.1",
     "lightweight-charts": "^5.0.9",
     "lucide-react": "^0.468.0",
-    "motion": "^12.23.24",
+    "motion": "^13.4.4",
     "plabs-js-sdk": "0.2.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
