@@ -1,7 +1,21 @@
-# PLabs Wallet SDK
+# Shared SDK
 
-此目录包含同级 plabs-wallet-extension 发布的 `@plabs-wallet/sdk` 0.2.0 tarball，package.json 通过本地 file 依赖固定，pnpm-lock.yaml 记录完整性哈希。不依赖开发机器的绝对路径或未发布的 workspace。
+**English** | [简体中文](README.zh-CN.md)
 
-升级时在钱包扩展项目构建并打包 SDK，将新 tarball 放在此目录，更新本项目依赖并运行 `pnpm check` 与 `pnpm test:e2e`。不得编辑 node_modules 或复制钱包内部密钥/proving 实现来绕过 SDK 能力边界。
+`plabs-js-sdk-0.2.0.tgz` is built with `npm pack` from the standalone
+[plabs-js-sdk repository](https://github.com/1inxe/plabs-js-sdk), checked out as
+`../plabs-js-sdk` beside the consumer repositories.
 
-SDK 的许可证与上游 NOTICE 位于 tarball 内。
+PLabs Network and PLabs Wallet use the identical artifact. `pnpm-lock.yaml`
+pins its integrity; SDK source is maintained only in the standalone repository.
+
+## Update the dependency
+
+1. Run `npm ci` and `npm pack` in the SDK repository.
+2. Copy the resulting tarball into both consumers' `vendor/` directories.
+3. Update each consumer's `package.json` dependency when the filename changes,
+   then run `pnpm install` in each consumer to refresh its lockfile.
+4. Build both consumers and include the tarball and lockfile updates together.
+
+The SDK is MIT-licensed. Preserve its `LICENSE`, `LICENSE.upstream` and
+`NOTICE.md` when redistributing it.

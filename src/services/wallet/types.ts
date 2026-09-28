@@ -8,7 +8,7 @@ import type {
   PrivacyReadScope,
   PrivacySession,
   WalletPortfolio,
-} from '@plabs-wallet/sdk';
+} from 'plabs-js-sdk';
 
 export type {
   DexOrderIntent,

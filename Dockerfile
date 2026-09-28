@@ -3,7 +3,6 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY package.json pnpm-lock.yaml ./
 COPY vendor ./vendor
-COPY scripts/prepare-hooks.mjs ./scripts/prepare-hooks.mjs
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build

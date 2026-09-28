@@ -1,0 +1,32 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "pnpm build",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/api/market/:path*",
+      "destination": "https://app.plabs.online/dex-matcher/:path*"
+    },
+    {
+      "source": "/api/monad/:path*",
+      "destination": "https://monad-indexer.plabs.online/:path*"
+    },
+    {
+      "source": "/api/ethereum/:path*",
+      "destination": "https://eth-indexer.plabs.online/:path*"
+    },
+    {
+      "source": "/api/platform/:path*",
+      "destination": "https://api.plabs.online/:path*"
+    },
+    {
+      "source": "/((?!api/|assets/).*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/assets/",
+      "destination": "/index.html"
+    }
+  ]
+}

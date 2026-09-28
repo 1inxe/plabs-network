@@ -1,5 +1,5 @@
-import type { PlabsProvider } from '@plabs-wallet/sdk';
-import { createPlabsWallet, discoverPlabsWallets } from '@plabs-wallet/sdk';
+import type { PlabsProvider } from 'plabs-js-sdk';
+import { createPlabsWallet, discoverPlabsWallets } from 'plabs-js-sdk';
 import { walletReadTimeout } from './request-timeout';
 import type { WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
