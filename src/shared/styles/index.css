@@ -1,0 +1,133 @@
+@import 'tailwindcss';
+@import './tokens.css';
+@import './shell.css';
+@import './components.css';
+@import './features.css';
+@import './drawer.css';
+@import './responsive.css';
+@import './notifications.css';
+@theme {
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-accent: #4bdfa5;
+}
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 100px;
+  }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--text);
+    font: 13px/1.55 var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+  button,
+  a,
+  input,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button,
+  select {
+    cursor: pointer;
+  }
+  button {
+    border: 0;
+  }
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  input,
+  select {
+    min-width: 0;
+    color: var(--text);
+    background: transparent;
+    border: 0;
+    outline: none;
+  }
+  option {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  input::placeholder {
+    color: var(--text-muted);
+  }
+  input:focus-visible,
+  select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+  }
+  :is(button, a):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+  }
+  h1 {
+    font-size: 34px;
+    line-height: 1.22;
+    letter-spacing: -1.3px;
+    font-weight: 600;
+  }
+  h2 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  h3 {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  ::selection {
+    background: #237756;
+    color: white;
+  }
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #34434e;
+    border-radius: 8px;
+  }
+}
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.text-green {
+  color: var(--accent);
+}
+.text-amber {
+  color: var(--amber);
+}
+.muted,
+.muted-text {
+  color: var(--text-secondary);
+}
+.muted-text {
+  font-size: 12px;
+  line-height: 1.75;
+}
+.break-all {
+  overflow-wrap: anywhere;
+}

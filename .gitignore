@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env.local
+*.tsbuildinfo
+playwright-report/
+test-results/
+coverage/
+storybook-static/
+*.local
+.DS_Store
+artifacts/
+
+# Local environment secrets
+.env
+.env.*
+!.env.example

@@ -1,0 +1,137 @@
+[data-notification-host] {
+  flex: 0 0 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+ol.app-notifications[data-sonner-toaster] {
+  --width: 384px;
+  position: fixed;
+  z-index: 1000;
+  width: min(384px, calc(100vw - 32px));
+  top: max(88px, calc(env(safe-area-inset-top) + 16px));
+  right: max(16px, env(safe-area-inset-right));
+  left: auto;
+  font-family: var(--font-sans);
+  pointer-events: none;
+}
+ol.app-notifications[data-sonner-toaster] [data-sonner-toast] {
+  width: 100%;
+  height: 176px;
+  left: auto;
+  right: 0;
+  pointer-events: auto;
+  touch-action: auto;
+}
+.notification-card {
+  --notification-color: var(--cyan);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 176px;
+  padding: 14px 15px;
+  border: 1px solid #34454e;
+  border-left: 3px solid var(--notification-color);
+  border-radius: 10px;
+  background: #172129;
+  color: var(--text);
+  box-shadow: 0 12px 40px #0006;
+  overflow: hidden;
+}
+.notification-card[data-kind='success'] {
+  --notification-color: var(--accent);
+}
+.notification-card[data-kind='error'] {
+  --notification-color: var(--red);
+}
+.notification-card[data-kind='warning'] {
+  --notification-color: var(--amber);
+}
+.notification-heading {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 9px;
+  min-height: 24px;
+}
+.notification-heading > svg {
+  flex-shrink: 0;
+  color: var(--notification-color);
+}
+.notification-heading h3 {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.notification-close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.notification-close:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.notification-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: 12px/1.7 var(--font-sans);
+  color: #b9c5ce;
+}
+.notification-body:focus-visible {
+  outline: 1px solid var(--notification-color);
+  outline-offset: -1px;
+  border-radius: 3px;
+}
+.notification-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+.notification-actions > :is(button, a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border: 1px solid #415561;
+  border-radius: 5px;
+  background: #21313b;
+  color: #e1eaf0;
+  font-size: 11px;
+  cursor: pointer;
+}
+.notification-actions > :is(button, a):hover {
+  border-color: var(--notification-color);
+}
+.notification-spinner {
+  animation: notification-spin 1s linear infinite;
+}
+@keyframes notification-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notification-spinner {
+    animation: none;
+  }
+}

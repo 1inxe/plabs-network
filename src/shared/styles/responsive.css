@@ -1,0 +1,828 @@
+@media (min-width: 1650px) {
+  :root {
+    --sidebar-width: 265px;
+  }
+  .page {
+    padding-inline: 42px;
+  }
+  .trading-grid {
+    grid-template-columns: minmax(400px, 1fr) 245px 310px;
+  }
+  .gateway-grid {
+    gap: 28px;
+  }
+  .gateway-aside {
+    gap: 20px;
+  }
+  .transaction-panel {
+    padding: 32px;
+  }
+  .balance-panel,
+  .lifecycle {
+    padding: 25px;
+  }
+  .asset-input,
+  .asset-output {
+    padding: 23px;
+  }
+  .amount-line {
+    margin-block: 30px 20px;
+  }
+}
+@media (max-width: 1250px) {
+  :root {
+    --sidebar-width: 212px;
+  }
+  .topbar {
+    padding-inline: 24px;
+    gap: 14px;
+  }
+  .top-status {
+    display: none;
+  }
+  .page {
+    padding-inline: 24px;
+  }
+  .brand {
+    padding-inline: 6px;
+    font-size: 17px;
+  }
+  .brand > div > span {
+    font-size: 12px;
+  }
+  .nav-item {
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+  .nav-badge {
+    font-size: 7px;
+  }
+  .gateway-grid {
+    grid-template-columns: minmax(0, 1.3fr) minmax(270px, 1fr);
+    gap: 16px;
+  }
+  .transaction-panel {
+    padding: 20px;
+  }
+  .gateway-strip > div:last-child {
+    display: none;
+  }
+  .trading-grid {
+    grid-template-columns: minmax(300px, 1fr) 235px;
+  }
+  .order-book {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  .order-form {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .chart-panel {
+    grid-row: 1 / 3;
+  }
+  .market-chart {
+    min-height: 630px;
+  }
+  .market-live {
+    display: none;
+  }
+  .sea-wordmark > span {
+    display: none;
+  }
+  .sea-hero-grid {
+    gap: 20px;
+  }
+  .sea-hero h1 {
+    font-size: 33px;
+  }
+  .sea-metrics {
+    gap: 25px;
+  }
+  .sea-metrics strong {
+    font-size: 24px;
+  }
+  .whitelist-card {
+    padding: 20px;
+  }
+  .nft-copy > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (max-width: 1000px) {
+  :root {
+    --sidebar-width: 190px;
+  }
+  .sidebar {
+    padding-inline: 10px;
+  }
+  .brand {
+    gap: 8px;
+  }
+  .brand > div > span {
+    display: none;
+  }
+  .nav-badge {
+    display: none;
+  }
+  .global-search {
+    width: 230px;
+  }
+  .network-selector-label {
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .gateway-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gateway-aside {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+  .ecosystem-links {
+    grid-column: 1 / -1;
+  }
+  .ecosystem-links > div:last-child {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .page-heading h1 {
+    font-size: 30px;
+  }
+  .page-heading p {
+    max-width: 450px;
+  }
+  .page-heading > a {
+    flex-shrink: 0;
+  }
+  .stat-card {
+    padding: 18px;
+  }
+  .stat-card > strong {
+    font-size: 24px;
+  }
+  .stats-grid.four {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pool-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .pool-grid > :last-child:nth-child(3) {
+    display: none;
+  }
+  .sea-hero-grid {
+    grid-template-columns: 1fr;
+  }
+  .sea-hero {
+    padding-top: 8px;
+  }
+  .sea-hero h1 {
+    font-size: 43px;
+  }
+  .sea-metrics {
+    max-width: none;
+    gap: 60px;
+  }
+  .whitelist-card .eligibility-list {
+    display: flex;
+    gap: 20px;
+  }
+  .eligibility-list > div {
+    flex: 1;
+    align-items: flex-start;
+  }
+  .eligibility-list > div > svg {
+    display: none;
+  }
+  .privacy-editorial {
+    grid-template-columns: 1fr;
+    gap: 25px;
+  }
+  .privacy-editorial h2 br {
+    display: none;
+  }
+  .trading-grid {
+    grid-template-columns: minmax(0, 1fr) 210px;
+  }
+  .market-header {
+    gap: 16px;
+  }
+  .market-stat:last-of-type {
+    display: none;
+  }
+  .market-price {
+    padding-left: 15px;
+  }
+  .chart-toolbar {
+    gap: 8px;
+  }
+  .page-footer > span:last-child {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  :root {
+    --header-height: 65px;
+  }
+  .sidebar {
+    display: none;
+  }
+  .workspace {
+    margin-left: 0;
+  }
+  .topbar {
+    height: 65px;
+    padding: 0 17px;
+    gap: 9px;
+  }
+  .mobile-menu {
+    display: inline-flex !important;
+    order: 3;
+    color: #afc6ba;
+    background: #202c29;
+    width: 34px;
+    height: 34px;
+  }
+  .mobile-menu svg {
+    width: 19px;
+  }
+  .mobile-brand {
+    display: flex !important;
+    gap: 6px;
+    align-items: center;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+  }
+  .global-search {
+    display: none;
+  }
+  .topbar-actions {
+    gap: 7px;
+    min-width: 0;
+  }
+  .network-selector {
+    min-width: 0;
+    gap: 5px;
+    padding-inline: 5px;
+    font-size: 10px;
+  }
+  .network-selector-label {
+    max-width: 76px;
+  }
+  .wallet-button {
+    min-width: 0;
+    min-height: 34px;
+    padding: 7px 10px;
+    font-size: 10px;
+  }
+  .wallet-button > span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .wallet-button > svg {
+    flex-shrink: 0;
+    width: 14px;
+  }
+  .wallet-button.connected {
+    font-size: 9px;
+  }
+  .mobile-bottom {
+    position: fixed;
+    display: flex !important;
+    inset: auto 0 0;
+    z-index: 30;
+    background: #0b1213f5;
+    backdrop-filter: blur(18px);
+    border-top: 1px solid #2a3c34;
+    padding: 10px 8px calc(9px + env(safe-area-inset-bottom));
+    justify-content: space-around;
+  }
+  .mobile-bottom > a {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 5px;
+    font: 9px var(--font-mono);
+    color: #a9b8b0;
+    padding: 2px 7px;
+  }
+  .mobile-bottom > a.active {
+    color: var(--accent);
+  }
+  .mobile-bottom > a.active svg {
+    filter: drop-shadow(0 0 6px #4bdfa525);
+  }
+  .page {
+    padding: 25px 17px;
+  }
+  .page-heading {
+    gap: 10px;
+    margin-bottom: 21px;
+  }
+  .page-heading h1 {
+    font-size: 29px;
+    margin-block: 9px;
+  }
+  .page-heading p {
+    font-size: 11px;
+    line-height: 1.8;
+  }
+  .page-heading .eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .page-heading > .secondary-button {
+    font-size: 0;
+    gap: 0;
+    padding: 9px;
+  }
+  .page-heading > .secondary-button svg {
+    width: 17px;
+    height: 17px;
+  }
+  .gateway-strip {
+    padding: 13px;
+    margin-bottom: 17px;
+  }
+  .gateway-strip > div {
+    font-size: 9px;
+  }
+  .gateway-strip > div:nth-child(2) {
+    display: none;
+  }
+  .gateway-strip > div:first-child {
+    width: 100%;
+  }
+  .gateway-strip .badge {
+    margin-left: auto;
+  }
+  .transaction-panel {
+    padding: 16px;
+  }
+  .transaction-panel .segmented > button {
+    font-size: 11px;
+    gap: 6px;
+    min-height: 36px;
+  }
+  .tab-cn {
+    display: none;
+  }
+  .network-row {
+    margin-block: 23px 16px;
+  }
+  .asset-input,
+  .asset-output {
+    padding: 15px;
+  }
+  .input-caption {
+    font-size: 7px;
+  }
+  .input-caption .badge {
+    font-size: 7px;
+  }
+  .amount-line {
+    gap: 8px;
+  }
+  .amount-line > input {
+    font-size: 30px;
+  }
+  .token-picker select {
+    max-width: 100px;
+    font-size: 14px;
+  }
+  .coin {
+    width: 29px;
+    height: 29px;
+    font-size: 15px;
+  }
+  .input-bottom {
+    font-size: 8px;
+  }
+  .input-bottom > span:last-child {
+    max-width: 160px;
+    text-align: right;
+    justify-content: end;
+  }
+  .gateway-aside {
+    display: flex;
+  }
+  .gateway-aside > .panel {
+    width: 100%;
+  }
+  .ecosystem-links > div:last-child {
+    grid-template-columns: 1fr 1fr;
+  }
+  .terminal-strip {
+    font-size: 7px;
+    padding: 10px;
+  }
+  .terminal-message {
+    font-size: 7px;
+  }
+  .balance-panel,
+  .lifecycle,
+  .ecosystem-links {
+    padding: 20px;
+  }
+  .form-footnote {
+    font-size: 7px;
+  }
+  .recent-panel {
+    padding: 18px;
+  }
+  .recent-panel h2 {
+    font-size: 12px;
+  }
+  .page-footer {
+    padding: 10px 17px 90px;
+    justify-content: center;
+  }
+  .activity-preview > div {
+    flex-wrap: wrap;
+    font-size: 10px;
+  }
+  .activity-preview .mono {
+    order: 5;
+    width: 100%;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stats-grid:not(.four) > :last-child {
+    grid-column: 1 / -1;
+  }
+  .stat-card {
+    padding: 16px;
+  }
+  .stat-card > div {
+    font-size: 9px;
+  }
+  .stat-card > div svg {
+    width: 15px;
+  }
+  .stat-card > strong {
+    font-size: 26px;
+    margin-block: 15px 10px;
+  }
+  .stat-card small {
+    font-size: 8px;
+  }
+  .page-heading:has(.segmented) {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 17px;
+  }
+  .pool-grid {
+    grid-template-columns: 1fr;
+  }
+  .pool-grid > :last-child:nth-child(3) {
+    display: block;
+  }
+  .pool-card {
+    padding: 17px;
+  }
+  .section-heading h2 {
+    font-size: 16px;
+  }
+  .section-heading {
+    gap: 9px;
+  }
+  .section-heading > .badge {
+    font-size: 7px;
+  }
+  .explorer-search {
+    padding: 15px;
+  }
+  .explorer-search > form {
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+  .explorer-search input {
+    font-size: 10px;
+    width: 75%;
+  }
+  .explorer-search .primary-button {
+    width: 100%;
+    min-height: 35px;
+    padding: 7px;
+  }
+  .search-hints {
+    flex-wrap: wrap;
+    font-size: 7px;
+  }
+  .explorer-ledger {
+    padding: 17px;
+  }
+  .prover-banner {
+    flex-wrap: wrap;
+    padding: 19px;
+    gap: 13px;
+  }
+  .prover-banner > div:not(.empty-icon) {
+    flex: 1;
+  }
+  .prover-banner > button {
+    width: 100%;
+    margin-top: 5px;
+  }
+  .history-toolbar {
+    padding: 14px;
+    gap: 10px;
+  }
+  .history-toolbar .search-box {
+    flex: 1;
+  }
+  .history-toolbar .search-box input {
+    width: 100%;
+  }
+  .history-toolbar > .segmented {
+    width: 100%;
+  }
+  .history-toolbar > div:has(.segmented) {
+    order: 3;
+    width: 100%;
+  }
+  .history-toolbar .plain-select {
+    max-width: 130px;
+  }
+  .history-toolbar .secondary-button {
+    font-size: 9px;
+    padding: 6px 9px;
+  }
+  .table-footer {
+    font-size: 8px;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px;
+  }
+  .sea-navigation {
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .sea-wordmark > span {
+    display: block;
+  }
+  .sea-navigation > div:has(.segmented) {
+    width: 100%;
+  }
+  .sea-navigation .segmented {
+    background: #080e11;
+  }
+  .sea-navigation .segmented > button {
+    font-size: 9px;
+    padding: 8px 7px;
+  }
+  .sea-hero h1 {
+    font-size: 35px;
+    line-height: 1.25;
+    letter-spacing: -1.5px;
+    margin-top: 19px;
+  }
+  .sea-hero > p {
+    font-size: 11px;
+  }
+  .sea-hero-actions {
+    gap: 20px;
+  }
+  .sea-metrics {
+    gap: 30px;
+    padding-top: 24px;
+    margin-top: 25px;
+  }
+  .sea-metrics small {
+    font-size: 7px;
+  }
+  .sea-metrics strong {
+    font-size: 27px;
+  }
+  .whitelist-card {
+    padding: 20px;
+  }
+  .whitelist-card .eligibility-list {
+    display: block;
+    padding-bottom: 20px;
+  }
+  .eligibility-list > div {
+    align-items: center;
+  }
+  .eligibility-list > div > svg {
+    display: block;
+  }
+  .collection-section .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .collection-section .section-heading h2 {
+    font-size: 23px;
+  }
+  .nft-grid {
+    grid-template-columns: 1fr;
+    gap: 22px;
+  }
+  .nft-card {
+    padding: 10px;
+  }
+  .nft-art {
+    aspect-ratio: 1.13;
+  }
+  .nft-copy {
+    padding: 17px 9px 10px;
+  }
+  .nft-copy > div:first-child {
+    flex-direction: row;
+    align-items: center;
+  }
+  .nft-copy h3 {
+    font-size: 18px;
+  }
+  .nft-copy p {
+    font-size: 11px;
+    min-height: 0;
+  }
+  .privacy-editorial {
+    padding-block: 32px;
+    margin-top: 28px;
+  }
+  .privacy-features {
+    gap: 22px;
+  }
+  .official-drop {
+    gap: 15px;
+    padding: 16px;
+  }
+  .official-drop img {
+    width: 77px;
+    height: 125px;
+  }
+  .official-drop h2 {
+    font-size: 17px;
+  }
+  .official-drop p {
+    font-size: 10px;
+  }
+  .official-drop > svg {
+    display: none;
+  }
+  .pex-page {
+    padding: 0 10px 20px;
+  }
+  .market-header {
+    gap: 13px;
+    padding: 18px 5px;
+  }
+  .market-pair h1 {
+    font-size: 13px;
+  }
+  .market-pair > svg {
+    display: none;
+  }
+  .market-price {
+    padding-left: 12px;
+    max-width: 140px;
+  }
+  .market-price strong {
+    font-size: 17px;
+  }
+  .market-stat {
+    display: none;
+  }
+  .trading-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 8px;
+  }
+  .chart-panel {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .order-book {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 13px 8px;
+  }
+  .order-form {
+    grid-column: 2;
+    grid-row: 2;
+    padding: 12px 10px;
+  }
+  .market-chart,
+  .chart-empty {
+    min-height: 320px;
+    height: 320px;
+    flex: none;
+  }
+  .chart-meta {
+    font-size: 7px;
+    gap: 8px;
+  }
+  .chart-bottom {
+    font-size: 7px;
+  }
+  .order-form h2 {
+    font-size: 11px;
+    gap: 5px;
+  }
+  .order-form h2 svg {
+    width: 14px;
+  }
+  .order-form > .eyebrow {
+    font-size: 6px;
+  }
+  .order-form .fee-details > div {
+    font-size: 8px;
+    gap: 5px;
+  }
+  .order-form .fee-details strong {
+    font-size: 7px;
+  }
+  .order-form .notice {
+    font-size: 8px;
+    padding: 8px;
+    gap: 5px;
+  }
+  .order-form .notice svg {
+    width: 12px;
+  }
+  .order-form .primary-button {
+    font-size: 9px;
+    gap: 5px;
+  }
+  .buy-sell {
+    gap: 5px;
+  }
+  .buy-sell > button {
+    font-size: 9px;
+    padding: 9px 4px;
+    gap: 4px;
+  }
+  .buy-sell svg {
+    width: 12px;
+  }
+  .available-balance small {
+    font-size: 7px;
+  }
+  .book-row {
+    font-size: 8px;
+  }
+  .book-mid {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .book-balance {
+    flex-wrap: wrap;
+    font-size: 7px;
+  }
+  .order-tabs {
+    gap: 18px;
+  }
+  .order-tabs > button {
+    font-size: 9px;
+  }
+  .ecosystem-hero {
+    padding: 35px 23px;
+  }
+  .ecosystem-hero h1 {
+    font-size: 35px;
+  }
+  .ecosystem-hero p {
+    font-size: 12px;
+  }
+  .ecosystem-feature-grid {
+    grid-template-columns: 1fr;
+    gap: 13px;
+  }
+  .ecosystem-feature-grid .panel {
+    padding: 23px;
+  }
+  .availability-panel {
+    padding: 23px;
+  }
+  .availability-panel > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .dialog-content {
+    padding: 25px 20px;
+  }
+  .skeleton-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

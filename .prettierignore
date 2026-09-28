@@ -1,0 +1,14 @@
+**/*.ts
+**/*.tsx
+**/*.js
+**/*.mjs
+**/*.json
+pnpm-lock.yaml
+node_modules
+dist
+coverage
+storybook-static
+playwright-report
+test-results
+public
+vendor
