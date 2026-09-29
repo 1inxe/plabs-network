@@ -7,11 +7,13 @@ const apiBase = z
     'Use a same-origin path or an HTTPS URL',
   )
   .transform((value) => value.replace(/\/+$/, ''));
+const apiBaseWithDefault = (fallback: string) =>
+  z.preprocess((value) => (value === '' ? undefined : value), apiBase.default(fallback));
 const schema = z.object({
-  VITE_MARKET_API: apiBase.default('/api/market'),
-  VITE_MONAD_API: apiBase.default('/api/monad'),
-  VITE_ETHEREUM_API: apiBase.default('/api/ethereum'),
-  VITE_PLATFORM_API: apiBase.default('/api/platform'),
+  VITE_MARKET_API: apiBaseWithDefault('/api/market'),
+  VITE_MONAD_API: apiBaseWithDefault('/api/monad'),
+  VITE_ETHEREUM_API: apiBaseWithDefault('/api/ethereum'),
+  VITE_PLATFORM_API: apiBaseWithDefault('/api/platform'),
 });
 export const env = schema.parse(import.meta.env);
 export const apiEndpoints = {
