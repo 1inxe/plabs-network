@@ -9,7 +9,7 @@ import {
 import { errorMessage } from '@/shared/api/errors';
 import { createHttpClient } from '@/shared/api/http-client';
 import { apiEndpoints } from '@/shared/config/env';
-import { Badge, Modal } from '@/shared/ui';
+import { Badge } from '@/shared/ui';
 
 const client = createHttpClient(apiEndpoints.platform);
 const stageLabels: Record<QualificationStage, string> = {
@@ -59,11 +59,9 @@ function WhitelistForm({
   const [stage, setStage] = useState<QualificationStage | null>(null);
   const [result, setResult] = useState<Qualification | null>(null);
   const [error, setError] = useState('');
-  const [resultOpen, setResultOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => {
     setResult(null);
-    setResultOpen(false);
     setError('');
     setStage(null);
     request.current = null;
@@ -83,7 +81,6 @@ function WhitelistForm({
     request.current = controller;
     setStage('wallet');
     setResult(null);
-    setResultOpen(false);
     setError('');
     try {
       const data = await checkQualification({
@@ -96,7 +93,6 @@ function WhitelistForm({
       });
       if (!controller.signal.aborted) {
         setResult(data);
-        setResultOpen(true);
       }
     } catch (cause) {
       if (!controller.signal.aborted) setError(errorMessage(cause));
@@ -126,9 +122,61 @@ function WhitelistForm({
         void check();
       }}
     >
-      <p>
-        Check your JubJub Bird spots and P20 airdrop allocation with your registered privacy wallet.
-      </p>
+      <figure className="whitelist-artwork">
+        <img
+          src="/assets/jubjub-bird-icon.png"
+          alt="JubJub Bird NFT artwork"
+          width={132}
+          height={132}
+        />
+        <figcaption>
+          <span className="eyebrow">THE GENESIS COLLECTION</span>
+          <strong>JubJub Bird</strong>
+          <span>The first private NFT · pERC721</span>
+          <span className="whitelist-artwork-note">Your beginning in a private world.</span>
+        </figcaption>
+      </figure>
+      {result ? (
+        <section className="whitelist-inline-result" role="status" aria-label="Whitelist result">
+          <div className="whitelist-result-heading">
+            <h3>
+              {result.rewards.nft > 0
+                ? 'You’re on the list.'
+                : result.rewards.p20 > 0
+                  ? 'A gift for you.'
+                  : 'No allocation this time.'}
+            </h3>
+            <span>ELIGIBILITY CHECKED</span>
+          </div>
+          <dl>
+            <div>
+              <dt>
+                JubJub Bird <small>NFT whitelist</small>
+              </dt>
+              <dd>
+                <Badge tone={result.rewards.nft > 0 ? 'green' : 'gray'}>
+                  {result.rewards.nft > 0
+                    ? `${result.rewards.nft} ${result.rewards.nft === 1 ? 'spot' : 'spots'}`
+                    : 'Ineligible'}
+                </Badge>
+              </dd>
+            </div>
+            <div>
+              <dt>
+                P20 <small>Token airdrop</small>
+              </dt>
+              <dd className={result.rewards.p20 > 0 ? 'text-green' : ''}>
+                <strong>{result.rewards.p20.toLocaleString()}</strong>
+                <span> P20</span>
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : (
+        <p>
+          Check your NFT whitelist spots and P20 allocation with your registered privacy wallet.
+        </p>
+      )}
       {!wallet.account ? (
         <button type="submit" className="primary-button w-full">
           Connect wallet to check
@@ -170,55 +218,6 @@ function WhitelistForm({
           </dd>
         </div>
       </dl>
-      {result && (
-        <button
-          type="button"
-          className="secondary-button w-full"
-          onClick={() => setResultOpen(true)}
-        >
-          View eligibility result
-        </button>
-      )}
-      <Modal
-        open={resultOpen && !!result}
-        onOpenChange={setResultOpen}
-        title={
-          result?.rewards.nft ? 'Congratulations' : result?.rewards.p20 ? 'Gift' : 'No allocation'
-        }
-        description="Your Genesis whitelist result. JubJub Bird and P20 allocations are shown separately."
-      >
-        {result && (
-          <div className="whitelist-result" role="status">
-            <dl>
-              <div>
-                <dt>
-                  JubJub Bird<small>The first private NFT · pERC721</small>
-                </dt>
-                <dd>
-                  <Badge tone={result.rewards.nft > 0 ? 'green' : 'gray'}>
-                    {result.rewards.nft > 0
-                      ? `${result.rewards.nft} ${result.rewards.nft === 1 ? 'spot' : 'spots'}`
-                      : 'Ineligible'}
-                  </Badge>
-                </dd>
-              </div>
-              <div>
-                <dt>
-                  P20<small>The first private token · pERC20</small>
-                </dt>
-                <dd>{result.rewards.p20.toLocaleString()} P20</dd>
-              </div>
-              <div>
-                <dt>X account</dt>
-                <dd>
-                  {result.twitter_handle ? `@${result.twitter_handle.replace(/^@/, '')}` : '—'}
-                </dd>
-              </div>
-            </dl>
-            <p className="mono whitelist-address">{wallet.privacyAddress}</p>
-          </div>
-        )}
-      </Modal>
     </form>
   );
 }

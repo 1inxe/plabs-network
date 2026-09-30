@@ -7,10 +7,10 @@ is used, no signatures are produced, and no requests reach the production API.
 
 Verify each entry independently:
 
-1. Click the hero's **Check whitelist** button. The Gift modal must open.
-2. Close it, select **The collection**, and click **Check your eligibility** at the
-   bottom. It must switch to Genesis and open the result, not merely scroll.
-3. Close the modal and click **Check again** in the card. It must query again.
+1. Click the hero's **Check whitelist** button. The result must appear directly under the NFT image, without a dialog.
+2. Select **The collection**, and click **Check your eligibility** at the
+   bottom. It must switch to Genesis and show the inline result, not merely scroll.
+3. Click **Check again** in the card. It must query again.
 4. Open `/p-sea?locked`, then click **Unlock and check whitelist** once. After the
    mock privacy authorization, the query must continue without a second click.
 5. Open `/p-sea?reject` and click **Check whitelist**. The rejected signature must
