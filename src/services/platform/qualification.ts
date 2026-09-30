@@ -27,7 +27,7 @@ export const qualificationSchema = z.object({
   rewards: z.object({ nft: z.number().int().nonnegative(), p20: z.number().nonnegative() }),
 });
 export type Qualification = z.infer<typeof qualificationSchema>;
-export type QualificationStage = 'address' | 'login' | 'proof' | 'checking';
+export type QualificationStage = 'wallet' | 'address' | 'login' | 'proof' | 'checking';
 
 /** No automatic retries: signatures and ownership proofs require explicit wallet approval. */
 export async function checkQualification({
@@ -45,6 +45,7 @@ export async function checkQualification({
   signal: AbortSignal;
   onStage: (stage: QualificationStage) => void;
 }): Promise<Qualification> {
+  onStage('wallet');
   if (!wallet.signMessage || !wallet.provePrivacyOwnership)
     throw new Error(
       'The connected wallet cannot prove privacy ownership. Reload the updated PLabs Wallet extension, then retry here.',

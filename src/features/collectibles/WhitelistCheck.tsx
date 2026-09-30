@@ -1,5 +1,5 @@
 import { Fingerprint } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useWallet } from '@/features/wallet';
 import {
   checkQualification,
@@ -13,6 +13,7 @@ import { Badge, Modal } from '@/shared/ui';
 
 const client = createHttpClient(apiEndpoints.platform);
 const stageLabels: Record<QualificationStage, string> = {
+  wallet: 'Checking your wallet connection…',
   address: 'Confirm privacy address in wallet…',
   login: 'Confirm sign-in in wallet…',
   proof: 'Approve ownership proof in wallet…',
@@ -20,14 +21,41 @@ const stageLabels: Record<QualificationStage, string> = {
 };
 export function WhitelistCheck() {
   const wallet = useWallet();
+  const form = useRef<HTMLFormElement>(null);
+  const [pending, setPending] = useState<{ account: string; chainId: number } | null>(null);
+  const { account, chainId, privacyAddress, busy, readAuthorizationError } = wallet;
+  useEffect(() => {
+    if (!pending) return;
+    if (pending.account !== account || pending.chainId !== chainId || readAuthorizationError) {
+      setPending(null);
+      return;
+    }
+    if (privacyAddress && !busy) {
+      setPending(null);
+      form.current?.requestSubmit();
+    }
+  }, [pending, account, chainId, privacyAddress, busy, readAuthorizationError]);
   return (
     <WhitelistForm
-      key={`${wallet.account}:${wallet.chainId}:${wallet.privacyAddress}:${wallet.privacyExpiresAt}:${wallet.privacyScopes.join(',')}`}
+      key={`${account}:${chainId}:${privacyAddress}:${wallet.privacyExpiresAt}:${wallet.privacyScopes.join(',')}`}
       wallet={wallet}
+      formRef={form}
+      onUnlock={() => {
+        setPending({ account, chainId });
+        void wallet.authorizeRead(['address']);
+      }}
     />
   );
 }
-function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
+function WhitelistForm({
+  wallet,
+  formRef,
+  onUnlock,
+}: {
+  wallet: ReturnType<typeof useWallet>;
+  formRef: RefObject<HTMLFormElement | null>;
+  onUnlock: () => void;
+}) {
   const [stage, setStage] = useState<QualificationStage | null>(null);
   const [result, setResult] = useState<Qualification | null>(null);
   const [error, setError] = useState('');
@@ -45,9 +73,15 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     };
   }, [wallet.wallet]);
   const check = async () => {
-    if (request.current || !wallet.wallet) return;
+    if (request.current) return;
+    if (!wallet.wallet) {
+      setError('PLabs Wallet is not connected. Connect your wallet to continue.');
+      wallet.setModal(true);
+      return;
+    }
     const controller = new AbortController();
     request.current = controller;
+    setStage('wallet');
     setResult(null);
     setResultOpen(false);
     setError('');
@@ -74,34 +108,37 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     }
   };
   return (
-    <div className="whitelist-check">
+    <form
+      id="whitelist-check-form"
+      ref={formRef}
+      className="whitelist-check"
+      onSubmit={(event) => {
+        event.preventDefault();
+        formRef.current?.scrollIntoView({ block: 'nearest' });
+        if (!wallet.account) {
+          wallet.setModal(true);
+          return;
+        }
+        if (!wallet.privacyAddress) {
+          if (!wallet.busy) onUnlock();
+          return;
+        }
+        void check();
+      }}
+    >
       <p>
         Check your JubJub Bird spots and P20 airdrop allocation with your registered privacy wallet.
       </p>
       {!wallet.account ? (
-        <button
-          type="button"
-          className="primary-button w-full"
-          onClick={() => wallet.setModal(true)}
-        >
+        <button type="submit" className="primary-button w-full">
           Connect wallet to check
         </button>
       ) : !wallet.privacyAddress ? (
-        <button
-          type="button"
-          className="primary-button w-full"
-          disabled={wallet.busy}
-          onClick={() => void wallet.authorizeRead(['address'])}
-        >
-          Unlock privacy address to check
+        <button type="submit" className="primary-button w-full" disabled={wallet.busy}>
+          {wallet.busy ? 'Waiting for wallet…' : 'Unlock and check whitelist'}
         </button>
       ) : (
-        <button
-          type="button"
-          className="primary-button w-full"
-          disabled={!!stage || wallet.busy}
-          onClick={() => void check()}
-        >
+        <button type="submit" className="primary-button w-full" disabled={!!stage}>
           <Fingerprint aria-hidden="true" size={16} />
           {stage ? 'Checking…' : result ? 'Check again' : 'Check whitelist'}
         </button>
@@ -182,6 +219,6 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
           </div>
         )}
       </Modal>
-    </div>
+    </form>
   );
 }

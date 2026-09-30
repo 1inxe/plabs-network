@@ -80,7 +80,7 @@ export function CollectiblesPage() {
         Whitelist checks are available. Registration, minting and private NFT holdings are not
         available in this app yet.
       </Notice>
-      {tab === 'whitelist' && (
+      <div hidden={tab !== 'whitelist'}>
         <div className="sea-hero-grid">
           <section className="sea-hero">
             <div className="eyebrow">
@@ -101,9 +101,9 @@ export function CollectiblesPage() {
                 Explore the collection
                 <ArrowRight aria-hidden="true" size={16} />
               </a>
-              <a href="#eligibility" className="text-link">
+              <button type="submit" form="whitelist-check-form" className="text-link">
                 Check whitelist <ArrowUpRight aria-hidden="true" size={14} />
-              </a>
+              </button>
             </div>
             <div className="sea-metrics">
               <div>
@@ -157,7 +157,7 @@ export function CollectiblesPage() {
             </Panel>
           </div>
         </div>
-      )}
+      </div>
       <section id="collection" className="collection-section">
         <div className="section-heading">
           <div>
@@ -207,7 +207,8 @@ export function CollectiblesPage() {
             rewards are available right here.
           </p>
           <button
-            type="button"
+            type="submit"
+            form="whitelist-check-form"
             className="text-link"
             onClick={() => {
               setTab('whitelist');

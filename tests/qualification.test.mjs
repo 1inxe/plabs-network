@@ -99,7 +99,7 @@ function harness(options = {}) {
 test('authenticated qualification passes the exact challenge and public proof and displays both rewards', async () => {
   const h = harness();
   assert.deepEqual(await h.run(), h.result);
-  assert.deepEqual(h.stages, ['address', 'login', 'proof', 'checking']);
+  assert.deepEqual(h.stages, ['wallet', 'address', 'login', 'proof', 'checking']);
   assert.equal(h.calls.length, 4);
   assert.equal(h.calls[0].headers.Authorization, undefined);
   assert.equal(h.calls[2].headers.Authorization, 'Bearer test-token');
