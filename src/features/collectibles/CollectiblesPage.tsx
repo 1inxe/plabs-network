@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { platformQueries } from '@/services/platform';
 import { unavailableFeatures } from '@/shared/config/product';
 import { Badge, ExternalLink, Modal, Notice, Panel, Segmented } from '@/shared/ui';
+import { WhitelistCheck } from './WhitelistCheck';
 
 const collectibles = [
   {
@@ -76,8 +77,8 @@ export function CollectiblesPage() {
         />
       </div>
       <Notice>
-        Browsing only. Registration, minting and private NFT holdings are not available in this app
-        yet.
+        Whitelist checks are available. Registration, minting and private NFT holdings are not
+        available in this app yet.
       </Notice>
       {tab === 'whitelist' && (
         <div className="sea-hero-grid">
@@ -132,27 +133,17 @@ export function CollectiblesPage() {
             <div className="panel-heading">
               <h2>
                 <span className="status-dot" />
-                Genesis access
+                Whitelist eligibility
               </h2>
               <Badge tone={closed ? 'gray' : 'green'}>
-                {campaign.data ? (closed ? 'CLOSED' : 'REGISTRATION OPEN') : 'CHECKING'}
+                {campaign.data
+                  ? closed
+                    ? 'REGISTRATION CLOSED'
+                    : 'REGISTRATION OPEN'
+                  : 'CHECKING'}
               </Badge>
             </div>
-            <p>
-              Campaign status is provided by PLabs. Registration from this app is currently
-              unavailable.
-            </p>
-            <div className="nft-availability">
-              <LockKeyhole aria-hidden="true" size={20} />
-              <div>
-                <strong>Registration unavailable</strong>
-                <p>{unavailableFeatures.nftRegistration}</p>
-              </div>
-            </div>
-            <button type="button" className="primary-button w-full" disabled>
-              {closed ? 'Registration closed' : 'Join allowlist'}
-              <LockKeyhole aria-hidden="true" size={15} />
-            </button>
+            <WhitelistCheck />
             {campaign.isError && (
               <button type="button" className="text-button" onClick={() => void campaign.refetch()}>
                 Retry campaign status

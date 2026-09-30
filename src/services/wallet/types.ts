@@ -49,6 +49,7 @@ export type Capabilities = {
     dexOrders?: boolean;
     dexTrading?: boolean;
     unifiedConnect?: boolean;
+    privacyOwnership?: boolean;
   };
   networks: WalletNetwork[];
 };
@@ -71,7 +72,15 @@ export type OperationResult = {
   txHash?: string;
   message?: string;
 };
+export type PrivacyOwnershipProof = {
+  version: 'bjj-schnorr-v1';
+  r_x_hex: string;
+  r_y_hex: string;
+  s_hex: string;
+};
 export interface WalletAdapter {
+  signMessage?(message: string, address: string): Promise<string>;
+  provePrivacyOwnership?(message: string, privacyAddress: string): Promise<PrivacyOwnershipProof>;
   requestAccess?(scopes: PrivacyReadScope[]): Promise<PrivacySession>;
   revokeAccess?(): Promise<void>;
   balances?(): Promise<WalletPortfolio>;
@@ -87,7 +96,7 @@ export interface WalletAdapter {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
   open(): Promise<void>;
-  privacyAddress(): Promise<{ address: string; chainId: number }>;
+  privacyAddress(): Promise<{ address: string; rawAddress?: string; chainId: number }>;
   switchChain(chainId: number): Promise<void>;
   transact(intent: PrivacyIntent): Promise<OperationResult>;
   transactionStatus(id: string): Promise<OperationResult>;

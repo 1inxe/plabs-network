@@ -1,10 +1,22 @@
 import type { PlabsProvider } from 'plabs-js-sdk';
-import { createPlabsWallet, discoverPlabsWallets } from 'plabs-js-sdk';
+import { createPlabsWallet, discoverPlabsWallets, toPlabsWalletError } from 'plabs-js-sdk';
 import { walletReadTimeout } from './request-timeout';
-import type { WalletAdapter } from './types';
+import type { PrivacyOwnershipProof, WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
+    signMessage: (message, address) => sdk.evm.signMessage(message, address),
+    // Bridge the new RPC while consumers retain the published SDK version.
+    async provePrivacyOwnership(message, privacyAddress) {
+      try {
+        return (await provider.request({
+          method: 'plabs_provePrivacyOwnership',
+          params: [{ message, privacyAddress }],
+        })) as PrivacyOwnershipProof;
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
     async session() {
       const [accounts, chainId, capabilities] = await walletReadTimeout(
         Promise.all([sdk.getAccounts(), sdk.evm.getChainId(), sdk.capabilities()]),

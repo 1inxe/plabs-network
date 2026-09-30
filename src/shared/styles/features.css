@@ -1695,3 +1695,44 @@
 .sea-page > .notice {
   margin: 0 0 24px;
 }
+
+.whitelist-check {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+.whitelist-check > p {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.whitelist-result {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.whitelist-result h3 {
+  font-size: 15px;
+  margin-bottom: 16px;
+}
+.whitelist-result dl {
+  display: grid;
+  gap: 14px;
+}
+.whitelist-result dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.whitelist-result dt {
+  color: var(--text-muted);
+}
+.whitelist-result dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.whitelist-address {
+  overflow-wrap: anywhere;
+  margin-top: 18px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
