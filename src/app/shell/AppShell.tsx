@@ -26,7 +26,7 @@ const nav = [
   { to: '/pex', label: 'Trade', icon: ChartCandlestick, badge: 'Spot' },
   { to: '/history', label: 'Activity', icon: History },
   { to: '/explorer', label: 'Explorer', icon: ScanSearch },
-  { to: '/p-sea', label: 'NFT gallery', icon: Gem, section: 'DISCOVER', badge: 'View only' },
+  { to: '/p-sea', label: 'Genesis whitelist', icon: Gem, section: 'DISCOVER', badge: 'Check' },
   {
     to: '/p-fun',
     label: 'Token launch',

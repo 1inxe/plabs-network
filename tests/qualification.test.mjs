@@ -51,6 +51,7 @@ function harness(options = {}) {
     session: async () => ({
       accounts: [account],
       chainId: 1,
+      capabilities: { methods: { privacyOwnership: true } },
       privacy: { address: 'perc1display', scopes: ['address'] },
     }),
     privacyAddress: async () => ({ address: 'perc1display', rawAddress: address, chainId: 1 }),
@@ -154,4 +155,14 @@ test('malformed proof and mismatched response addresses are rejected', async () 
   const mismatch = harness();
   mismatch.result.privacy_address = `0x${'56'.repeat(43)}`;
   await assert.rejects(mismatch.run(), /different privacy address/);
+});
+
+test('a live capability check stops an outdated extension before authentication and can retry after reload', async () => {
+  const h = harness();
+  const updated = h.wallet.session;
+  h.wallet.session = async () => ({ ...(await updated()), capabilities: { methods: {} } });
+  await assert.rejects(h.run(), /reload the updated PLabs Wallet/i);
+  assert.equal(h.calls.length, 0);
+  h.wallet.session = updated;
+  assert.deepEqual(await h.run(), h.result);
 });

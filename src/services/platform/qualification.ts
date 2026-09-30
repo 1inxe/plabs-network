@@ -46,8 +46,11 @@ export async function checkQualification({
   onStage: (stage: QualificationStage) => void;
 }): Promise<Qualification> {
   if (!wallet.signMessage || !wallet.provePrivacyOwnership)
-    throw new Error('Update PLabs Wallet to check eligibility.');
+    throw new Error(
+      'The connected wallet cannot prove privacy ownership. Reload the updated PLabs Wallet extension, then retry here.',
+    );
   let expectedPrivacyAddress: string | undefined;
+  let checkedCapabilities = false;
   const current = async () => {
     signal.throwIfAborted();
     const session = await wallet.session();
@@ -57,6 +60,13 @@ export async function checkQualification({
       session.chainId !== chainId
     ) {
       throw new Error('Wallet account or network changed. Please check again.');
+    }
+    if (!checkedCapabilities) {
+      if (!session.capabilities.methods.privacyOwnership)
+        throw new Error(
+          'The running wallet extension does not support ownership proofs yet. In your browser extensions page, reload the updated PLabs Wallet, then retry here. Your query stays on this site.',
+        );
+      checkedCapabilities = true;
     }
     if (
       expectedPrivacyAddress &&

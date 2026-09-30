@@ -27,6 +27,7 @@ export const router = createBrowserRouter([
           { path: 'assets', element: <Gateway /> },
           { path: 'shield', element: <Navigate to="/assets?mode=deposit" replace /> },
           { path: 'privacyfi', element: <Navigate to="/assets" replace /> },
+          { path: 'privasea/whitelist', element: <Navigate to="/p-sea" replace /> },
           { path: 'privasea', element: <Navigate to="/p-sea" replace /> },
           { path: 'browser', element: <Navigate to="/explorer" replace /> },
           { path: 'privacyfun', element: <Navigate to="/p-fun" replace /> },

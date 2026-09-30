@@ -9,7 +9,7 @@ import {
 import { errorMessage } from '@/shared/api/errors';
 import { createHttpClient } from '@/shared/api/http-client';
 import { apiEndpoints } from '@/shared/config/env';
-import { Badge, ExternalLink } from '@/shared/ui';
+import { Badge, Modal } from '@/shared/ui';
 
 const client = createHttpClient(apiEndpoints.platform);
 const stageLabels: Record<QualificationStage, string> = {
@@ -31,9 +31,11 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   const [stage, setStage] = useState<QualificationStage | null>(null);
   const [result, setResult] = useState<Qualification | null>(null);
   const [error, setError] = useState('');
+  const [resultOpen, setResultOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
   useEffect(() => {
     setResult(null);
+    setResultOpen(false);
     setError('');
     setStage(null);
     request.current = null;
@@ -47,6 +49,7 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     const controller = new AbortController();
     request.current = controller;
     setResult(null);
+    setResultOpen(false);
     setError('');
     try {
       const data = await checkQualification({
@@ -57,7 +60,10 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
         signal: controller.signal,
         onStage: setStage,
       });
-      if (!controller.signal.aborted) setResult(data);
+      if (!controller.signal.aborted) {
+        setResult(data);
+        setResultOpen(true);
+      }
     } catch (cause) {
       if (!controller.signal.aborted) setError(errorMessage(cause));
     } finally {
@@ -67,7 +73,6 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       }
     }
   };
-  const supported = wallet.capabilities?.methods.privacyOwnership;
   return (
     <div className="whitelist-check">
       <p>
@@ -81,13 +86,6 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
         >
           Connect wallet to check
         </button>
-      ) : !supported ? (
-        <>
-          <p>Update PLabs Wallet to enable ownership verification.</p>
-          <ExternalLink href="https://app.plabs.online/privasea/whitelist">
-            Check on PLabs
-          </ExternalLink>
-        </>
       ) : !wallet.privacyAddress ? (
         <button
           type="button"
@@ -119,38 +117,71 @@ function WhitelistForm({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
           {wallet.readAuthorizationError}
         </p>
       )}
-      {result && (
-        <div className="whitelist-result" role="status">
-          <h3>
-            {result.rewards.nft > 0
-              ? 'Congratulations!'
-              : result.rewards.p20 > 0
-                ? 'You have a P20 allocation'
-                : 'No allocation found'}
-          </h3>
-          <dl>
-            <div>
-              <dt>JubJub Bird</dt>
-              <dd>
-                <Badge tone={result.rewards.nft > 0 ? 'green' : 'gray'}>
-                  {result.rewards.nft > 0
-                    ? `${result.rewards.nft} ${result.rewards.nft === 1 ? 'spot' : 'spots'}`
-                    : 'Ineligible'}
-                </Badge>
-              </dd>
-            </div>
-            <div>
-              <dt>P20 airdrop</dt>
-              <dd>{result.rewards.p20.toLocaleString()} P20</dd>
-            </div>
-            <div>
-              <dt>X account</dt>
-              <dd>{result.twitter_handle ? `@${result.twitter_handle.replace(/^@/, '')}` : '—'}</dd>
-            </div>
-          </dl>
-          <p className="mono whitelist-address">{wallet.privacyAddress}</p>
+      <dl className="whitelist-application">
+        <div>
+          <dt>Your privacy address</dt>
+          <dd className="mono">
+            {wallet.privacyAddress || 'Connect and unlock your privacy wallet'}
+          </dd>
         </div>
+        <div>
+          <dt>Your X account</dt>
+          <dd>
+            {result?.twitter_handle
+              ? `@${result.twitter_handle.replace(/^@/, '')}`
+              : 'Available after checking'}
+          </dd>
+        </div>
+      </dl>
+      {result && (
+        <button
+          type="button"
+          className="secondary-button w-full"
+          onClick={() => setResultOpen(true)}
+        >
+          View eligibility result
+        </button>
       )}
+      <Modal
+        open={resultOpen && !!result}
+        onOpenChange={setResultOpen}
+        title={
+          result?.rewards.nft ? 'Congratulations' : result?.rewards.p20 ? 'Gift' : 'No allocation'
+        }
+        description="Your Genesis whitelist result. JubJub Bird and P20 allocations are shown separately."
+      >
+        {result && (
+          <div className="whitelist-result" role="status">
+            <dl>
+              <div>
+                <dt>
+                  JubJub Bird<small>The first private NFT · pERC721</small>
+                </dt>
+                <dd>
+                  <Badge tone={result.rewards.nft > 0 ? 'green' : 'gray'}>
+                    {result.rewards.nft > 0
+                      ? `${result.rewards.nft} ${result.rewards.nft === 1 ? 'spot' : 'spots'}`
+                      : 'Ineligible'}
+                  </Badge>
+                </dd>
+              </div>
+              <div>
+                <dt>
+                  P20<small>The first private token · pERC20</small>
+                </dt>
+                <dd>{result.rewards.p20.toLocaleString()} P20</dd>
+              </div>
+              <div>
+                <dt>X account</dt>
+                <dd>
+                  {result.twitter_handle ? `@${result.twitter_handle.replace(/^@/, '')}` : '—'}
+                </dd>
+              </div>
+            </dl>
+            <p className="mono whitelist-address">{wallet.privacyAddress}</p>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
