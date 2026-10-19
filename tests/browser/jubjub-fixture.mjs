@@ -26,7 +26,8 @@ function canonical(value) {
     .map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`)
     .join(',')}}`;
 }
-function profile(now, ended) {
+const analyticsNow = 1792497600;
+function profile(now, ended, analytics = false) {
   // The reviewed public deployment is preserved. Only the test schedule changes.
   const rules = {
     auctionOnly: true,
@@ -48,7 +49,7 @@ function profile(now, ended) {
     paymentPool: pool,
     reserveUnits: '100000000',
     staged: true,
-    startsAt: now - 3600,
+    startsAt: now - (analytics ? 7200 : 3600),
     title: 'JubJub',
   };
   const rulesHash = `0x${Buffer.from(keccak_256(new TextEncoder().encode(canonical(rules)))).toString('hex')}`;
@@ -67,13 +68,38 @@ function profile(now, ended) {
     spendChecks: { continuous: false, final: false },
   };
 }
+function analyticsHistory(now) {
+  // Sequence zero is the auction baseline. Each later snapshot is a public
+  // change, not one person or necessarily one transaction.
+  return [
+    [-7200, 0, 0],
+    [-5400, 2, 200],
+    [-3600, 4, 600],
+    [-1800, 5, 11600],
+    [-900, 6, 11800],
+    [-600, 6, 12100],
+    [-120, 8, 12900],
+  ].map(([offset, positions, committed], sequence) => ({
+    at: now + offset,
+    sequence,
+    positions,
+    committedUnits: String(BigInt(committed) * 1000000n),
+    averageBidUnits: String(
+      (BigInt(committed) * 1000000n + BigInt(1623 - positions) * 100000000n) / 1623n,
+    ),
+    averageVersion: 2,
+    highestBidUnits: sequence >= 3 ? '11000000000' : sequence === 2 ? '300000000' : '100000000',
+    qualifyingBidUnits: '100000000',
+  }));
+}
 function createState(scenario) {
-  const now = Math.floor(Date.now() / 1000);
+  const analytics = scenario === 'analytics';
+  const now = analytics ? analyticsNow : Math.floor(Date.now() / 1000);
   const ended = scenario === 'refund';
-  return {
+  const state = {
     scenario,
     now,
-    config: profile(now, ended),
+    config: profile(now, ended, analytics),
     requests: [],
     funding: [],
     intents: ended
@@ -92,26 +118,92 @@ function createState(scenario) {
     positionVersion: ended ? 1 : 0,
     confirmedTransactions: ended ? 1 : 0,
     refundsRequested: 0,
+    jobs: [],
+    publicHistory: analytics ? analyticsHistory(now) : null,
+    registeredPositions: analytics ? 11 : 1,
   };
+  if (analytics) {
+    state.intents = [
+      {
+        id: `0x${'a1'.repeat(32)}`,
+        status: 'funded',
+        total: '100000000',
+        delta: '100000000',
+        version: 0,
+        createdAt: now - 1800,
+      },
+      // A rejected sponsor job can leave its intent prepared. Keep it before the
+      // resumable order to ensure the UI selects the clicked ID, not the first prepared row.
+      {
+        id: `0x${'b2'.repeat(32)}`,
+        status: 'prepared',
+        total: '150000000',
+        delta: '50000000',
+        version: 1,
+        createdAt: now - 900,
+      },
+      {
+        id: `0x${'c3'.repeat(32)}`,
+        status: 'prepared',
+        total: '200000000',
+        delta: '100000000',
+        version: 1,
+        createdAt: now - 120,
+      },
+    ];
+    state.jobs = [
+      {
+        id: 'funded-order-job',
+        intentId: state.intents[0].id,
+        purpose: 'bid',
+        status: 'confirmed',
+        txHash: `0x${'a4'.repeat(32)}`,
+        createdAt: now - 1800,
+      },
+      {
+        id: 'failed-order-job',
+        intentId: state.intents[1].id,
+        purpose: 'bid',
+        status: 'reverted',
+        error: 'Synthetic sponsor rejected this payment before broadcast.',
+        createdAt: now - 900,
+      },
+      {
+        id: 'pending-order-job',
+        intentId: state.intents[2].id,
+        purpose: 'bid',
+        status: 'submitted',
+        txHash: `0x${'c6'.repeat(32)}`,
+        createdAt: now - 120,
+      },
+    ];
+    state.confirmedTotal = 100000000n;
+    state.positionVersion = 1;
+    state.confirmedTransactions = 10;
+  }
+  return state;
 }
 function summary(state) {
+  const latest = state.publicHistory?.at(-1);
   return {
     phase: state.scenario === 'refund' ? 'ended' : 'bidding',
-    serverTime: Math.floor(Date.now() / 1000),
+    serverTime: state.publicHistory ? state.now : Math.floor(Date.now() / 1000),
     refundOpen: state.scenario === 'refund',
-    committedUnits: String(state.confirmedTotal),
-    positions: state.confirmedTotal > 0n ? 1 : 0,
+    committedUnits: latest?.committedUnits ?? String(state.confirmedTotal),
+    positions: latest?.positions ?? (state.confirmedTotal > 0n ? 1 : 0),
     bidTransactions: state.confirmedTransactions,
     snapshotHash: null,
     mergedRoot: null,
     campaignId: state.config.rules.id,
     rulesHash: state.config.rulesHash,
-    bidAttempts: state.intents.length,
+    bidAttempts: state.publicHistory ? 14 : state.intents.length,
     participationLimit: null,
-    registeredPositions: 1,
+    registeredPositions: state.registeredPositions,
     bidPaused: false,
-    averageBidUnits: '100000000',
-    highestBidUnits: String(state.confirmedTotal > 100000000n ? state.confirmedTotal : 100000000n),
+    averageBidUnits: latest?.averageBidUnits ?? '100000000',
+    highestBidUnits:
+      latest?.highestBidUnits ??
+      String(state.confirmedTotal > 100000000n ? state.confirmedTotal : 100000000n),
     qualifyingBidUnits: '100000000',
     stage: 'auction',
     auctionSeats: 1623,
@@ -119,13 +211,30 @@ function summary(state) {
     whitelistFrozen: false,
   };
 }
+function appendPublicChange(state, positionsDelta, unitsDelta) {
+  assert.ok(state.publicHistory, 'Public updates only belong to the analytics fixture');
+  const latest = state.publicHistory.at(-1);
+  state.now += 30;
+  const positions = latest.positions + positionsDelta;
+  const committedUnits = BigInt(latest.committedUnits) + unitsDelta;
+  state.publicHistory.push({
+    ...latest,
+    at: state.now,
+    sequence: latest.sequence + 1,
+    positions,
+    committedUnits: String(committedUnits),
+    averageBidUnits: String((committedUnits + BigInt(1623 - positions) * 100000000n) / 1623n),
+  });
+  state.confirmedTransactions++;
+  state.registeredPositions += positionsDelta;
+}
 function me(state) {
   const ended = state.scenario === 'refund';
   return {
     owner: account,
     position: { version: state.positionVersion },
     intents: state.intents,
-    jobs: [],
+    jobs: state.jobs,
     summary: summary(state),
     qualification: { rank: ended ? 1700 : null, eligible: ended ? false : null, final: ended },
     custody: { settled: ended, expectedRefundUnits: ended ? '150000000' : '0', refundedUnits: '0' },
@@ -175,6 +284,11 @@ function injectedProvider() {
     releaseSignature() {
       releaseSignature?.(data.signature);
       releaseSignature = undefined;
+    },
+    async publishUpdate() {
+      const response = await fetch('/__jubjub_fixture/public-update', { method: 'POST' });
+      if (!response.ok) throw new Error('Fixture public update failed');
+      return response.json();
     },
   };
   window.plabsPrivacyWallet = {
@@ -349,16 +463,18 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                 result = summary(state);
                 break;
               case '/api/jubjub/history': {
-                const rows = Array.from({ length: 3 }, (_, sequence) => ({
-                  at: state.now - 120 + sequence * 30,
-                  sequence,
-                  committedUnits: String(sequence * 100000000),
-                  positions: sequence,
-                  averageBidUnits: String(100000000 + sequence * 5000000),
-                  averageVersion: 2,
-                  highestBidUnits: String(100000000 + sequence * 50000000),
-                  qualifyingBidUnits: '100000000',
-                }));
+                const rows =
+                  state.publicHistory ??
+                  Array.from({ length: 3 }, (_, sequence) => ({
+                    at: state.now - 120 + sequence * 30,
+                    sequence,
+                    committedUnits: String(sequence * 100000000),
+                    positions: sequence,
+                    averageBidUnits: String(100000000 + sequence * 5000000),
+                    averageVersion: 2,
+                    highestBidUnits: String(100000000 + sequence * 50000000),
+                    qualifyingBidUnits: '100000000',
+                  }));
                 const after = Number(url.searchParams.get('after') ?? 0);
                 result = {
                   campaignId: state.config.rules.id,
@@ -426,12 +542,17 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                   total: intent.total,
                   delta: intent.delta,
                 });
-                const pending = state.funding.length === 1;
+                const pending = state.scenario !== 'analytics' && state.funding.length === 1;
                 if (!pending && intent.status !== 'funded') {
                   intent.status = 'funded';
                   state.confirmedTotal = BigInt(intent.total);
                   state.positionVersion += 1;
-                  state.confirmedTransactions += 1;
+                  if (state.publicHistory) {
+                    appendPublicChange(state, 0, BigInt(intent.delta));
+                    const job = state.jobs.find((item) => item.intentId === intent.id);
+                    assert.ok(job, 'The resumed analytics order has its original sponsor job');
+                    job.status = 'confirmed';
+                  } else state.confirmedTransactions += 1;
                 }
                 result = {
                   intentId: intent.id,
@@ -446,6 +567,11 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                 };
                 break;
               }
+              case '/__jubjub_fixture/public-update':
+                assert.equal(req.method, 'POST');
+                appendPublicChange(state, 1, 450000000n);
+                result = summary(state);
+                break;
               case '/api/jubjub/refund':
                 authenticated();
                 assert.equal(state.scenario, 'refund');
@@ -485,5 +611,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     port: Number(process.env.JUBJUB_FIXTURE_PORT ?? 5182),
   });
   console.log(`Synthetic JubJub fixture: ${server.url}/privasea/jubjub`);
-  console.log('Scenarios: ?scenario=flow|refund|reject|network|stale|old|locked');
+  console.log('Scenarios: ?scenario=flow|refund|reject|network|stale|old|locked|analytics');
 }

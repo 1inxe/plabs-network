@@ -44,7 +44,7 @@ and `JUBJUB_BROWSER_PATH` to the browser executable. `JUBJUB_ARTIFACT_DIR` can s
 the screenshot output directory; the default is `plabs-jubjub-browser` inside the
 system temporary directory.
 
-The seven assertions cover real page interactions with synthetic responses:
+The eleven cases cover real page interactions with synthetic responses:
 
 1. Reject a 125 P20 total, place a 100 P20 bid, resume the same pending payment
    after a page reload, then raise the total to 150 P20 with a 50 P20 payment.
@@ -55,6 +55,17 @@ The seven assertions cover real page interactions with synthetic responses:
 6. An older extension can read its position but cannot prepare or fund bids.
 7. A locked privacy wallet unlocks and signs in at a 390 px viewport without
    horizontal overflow.
+8. The activity panel compares fixed, consistent public snapshots across 15-minute,
+   one-hour, and all-time windows. An injected public update changes the bidder
+   count, confirmed bid count, committed amount, and average through normal polling.
+9. Hiding the highest-bid series removes its outlier from the chart scale. The
+   final visible series cannot be hidden.
+10. My bid orders distinguish accepted, pending, and rejected sponsor jobs. Resuming
+    the selected pending order preserves its ID and additional payment even when a
+    different rejected, still-prepared intent precedes it. Changing the wallet
+    account clears private order rows.
+11. Populated analysis and private order panels fit a 390 px viewport without
+    horizontal overflow.
 
 Every test rejects all requests outside its local fixture origin and checks for
 browser runtime errors. Funding calls contain only the intent ID and temporary
@@ -65,11 +76,16 @@ test schedule. It does not test real proof generation or on-chain confirmation.
 
 For manual inspection, run `node tests/browser/jubjub-fixture.mjs` and open
 `http://127.0.0.1:5182/privasea/jubjub`. Select another scenario with
-`?scenario=refund`, `reject`, `network`, `stale`, `old`, or `locked`. The `stale`
+`?scenario=refund`, `reject`, `network`, `stale`, `old`, `locked`, or `analytics`. The `stale`
 scenario holds the signature until the browser console calls
 `window.__jubjubFixture.changeAccount()` followed by
 `window.__jubjubFixture.releaseSignature()`. All pages display a test banner.
 
-Validation on 2026-10-19: all seven browser regressions passed with the existing
-REA Playwright runtime and local Google Chrome. Desktop confirmation, desktop
-refund, and mobile sign-in screenshots are generated on each run.
+The `analytics` scenario uses a fixed auction time and matching public summary and
+history: 8 funded positions, 10 confirmed bids, and 12,900 P20 committed. Its
+15-minute window changes by 2 positions and 1,100 P20; the one-hour window changes
+by 4 and 12,300 P20. Call `await window.__jubjubFixture.publishUpdate()` to append
+one public change of 1 position and 450 P20. This remains entirely local.
+
+Screenshots include desktop confirmation, desktop refund, mobile sign-in, live
+analysis, private orders, and mobile analysis with populated orders.

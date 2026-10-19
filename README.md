@@ -10,6 +10,8 @@ PLabs Network brings privacy asset management, PEX trading and on-chain activity
 - **Explorer** — Browse public pool statistics and blockchain transactions.
 - **JubJub auction** — Follow the live P20 auction, authenticate your privacy identity, bid or raise your total, resume a pending payment, and check settlement at `/privasea/jubjub`.
 
+The auction page includes funded bidder counts, confirmed bid counts, seat demand, per-bidder averages, and 15-minute/hourly/all-time activity analysis. Public activity uses aggregate snapshot changes; bidder identities are not published. After sign-in, **My bid orders** shows each bid's total, additional payment, campaign status, and transaction links, with recovery for pending bids.
+
 Run `pnpm dev` and open `http://127.0.0.1:5180/privasea/jubjub`. Bidding requires the updated PLabs Wallet extension with `jubjubBidding` support and experimental privacy writes enabled in the wallet settings. The wallet creates the private payment proof and retains its recovery record; the website never receives private note openings. An older extension can still view the auction and authenticate, but cannot fund bids.
 
 `VITE_JUBJUB_API` defaults to `/api/jubjub`. Development, Vercel rewrites, and the included Nginx configuration proxy this path to `https://app.plabs.online/nft-jubjub/v1`; the campaign's bearer authorization must be forwarded. See [JubJub protocol research](docs/jubjub-research.md) for the observed rules, endpoints, and verification limits.

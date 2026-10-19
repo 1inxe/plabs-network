@@ -1,13 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  ArrowUpRight,
-  Clock3,
-  Fingerprint,
-  Gavel,
-  RefreshCw,
-  ShieldCheck,
-} from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Clock3, Fingerprint, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet } from '@/features/wallet';
@@ -22,7 +14,10 @@ import { errorMessage } from '@/shared/api/errors';
 import { apiEndpoints } from '@/shared/config/env';
 import { short } from '@/shared/lib/format';
 import { Badge, Modal, Notice, Panel } from '@/shared/ui';
+import { AuctionAnalytics } from './AuctionAnalytics';
 import { BidChart } from './BidChart';
+import { describeBidOrder } from './bid-orders';
+import { MyBidOrders } from './MyBidOrders';
 
 const service = createJubjubService(apiEndpoints.jubjub);
 const dateLabel = (seconds: number) =>
@@ -172,7 +167,12 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     .filter((intent) => intent.status === 'funded')
     .sort((a, b) => b.version - a.version)[0];
   const prepared =
-    accountData?.intents.find((intent) => intent.status === 'prepared') ?? walletPending;
+    accountData?.intents.find(
+      (intent) =>
+        intent.status === 'prepared' && describeBidOrder(intent, accountData.jobs).canResume,
+    ) ?? walletPending;
+  const blockedBid =
+    !prepared && accountData?.intents.find((intent) => intent.status === 'prepared');
   const qualification = accountData?.qualification;
   const phase = !dataReady
     ? 'Connecting'
@@ -245,6 +245,10 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     setError('');
     try {
       if (!session || !accountData) throw new Error('Sign in and wait for your bid status first.');
+      if (blockedBid)
+        throw new Error(
+          'An earlier payment needs attention. Check My bid orders and refresh its status before making another bid.',
+        );
       if (!active && !prepared) throw new Error('Bidding is not currently available.');
       if (prepared)
         setReview({ total: prepared.total, delta: prepared.delta, resumeId: prepared.id });
@@ -271,14 +275,15 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       setMessage('Checking your latest bid before requesting wallet approval…');
       const fresh = await service.me(session.token, signal);
       await current(signal);
-      let intent = fresh.intents.find((item) => item.status === 'prepared');
-      if (approved.resumeId && !intent) {
-        intent = fresh.intents.find(
-          (item) => item.id === approved.resumeId && item.status === 'funded',
-        );
-        if (!intent)
-          throw new Error('The saved bid changed. Refresh your bid status before continuing.');
-      }
+      let intent = approved.resumeId
+        ? fresh.intents.find(
+            (item) => item.id === approved.resumeId && ['prepared', 'funded'].includes(item.status),
+          )
+        : fresh.intents.find(
+            (item) => item.status === 'prepared' && describeBidOrder(item, fresh.jobs).canResume,
+          );
+      if (approved.resumeId && !intent)
+        throw new Error('The saved bid changed. Refresh your bid status before continuing.');
       if (
         intent &&
         (intent.total !== approved.total ||
@@ -287,6 +292,10 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       )
         throw new Error('There is a different pending bid. Refresh and review that bid first.');
       if (!intent) {
+        if (fresh.intents.some((item) => item.status === 'prepared'))
+          throw new Error(
+            'An earlier payment needs attention. Check My bid orders before making another bid.',
+          );
         const status = await service.summary(signal);
         if (
           !config ||
@@ -330,11 +339,13 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       await current(signal);
       if (result.intentId !== intent.id)
         throw new Error('The wallet returned a different bid. Refresh before continuing.');
-      if (result.state === 'failed')
+      if (result.state === 'failed') {
+        setWalletPending(null);
         throw new Error(
           result.message ||
             'The bid could not be completed. Resume the saved bid to check its status.',
         );
+      }
       if (result.state === 'confirmed') setWalletPending(null);
       setMessage(
         result.state === 'confirmed'
@@ -488,61 +499,47 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
               />
             )}
           </Panel>
-          <Panel className="jubjub-rules">
-            <div className="panel-heading">
-              <h2>How the auction works</h2>
-              <Gavel size={16} className="muted" />
-            </div>
-            <ol>
-              <li>
-                <span>01</span>
-                <div>
-                  <strong>Connect & verify your wallet</strong>
-                  <p>
-                    Use Monad mainnet and unlock your privacy wallet. Sign in with an account
-                    signature and an ownership proof.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <span>02</span>
-                <div>
-                  <strong>Choose your total bid</strong>
-                  <p>
-                    Start at 100 P20, in increments of 50. Raising from 100 to 150 P20 pays only the
-                    additional 50 P20. You need one confirmed P20 note covering that payment.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <span>03</span>
-                <div>
-                  <strong>Approve & follow confirmation</strong>
-                  <p>
-                    Your wallet prepares the private payment to the official custody address. Gas is
-                    sponsored. A bid counts only after the campaign confirms it.
-                  </p>
-                </div>
-              </li>
-              <li>
-                <span>04</span>
-                <div>
-                  <strong>Check the final allocation</strong>
-                  <p>
-                    The qualifying price can change. Winning bids pay their own bid amount. Final
-                    eligibility and any refund are determined after settlement.
-                  </p>
-                </div>
-              </li>
-            </ol>
-            <div className="jubjub-custody">
-              <ShieldCheck size={16} />
-              <p>
-                P20 is transferred to the official custody address. Refund release follows the
-                campaign settlement schedule; it is not an instant cancellation.
-              </p>
-            </div>
-          </Panel>
+          <AuctionAnalytics
+            config={config}
+            summary={
+              config &&
+              stats?.campaignId === config.rules.id &&
+              stats.rulesHash === config.rulesHash &&
+              !stats.unavailable
+                ? stats
+                : undefined
+            }
+            history={
+              config &&
+              history.data?.campaignId === config.rules.id &&
+              history.data.rulesHash === config.rulesHash
+                ? history.data
+                : undefined
+            }
+            now={stats?.serverTime ?? 0}
+            live={dataReady}
+            historyError={history.isError}
+          />
+          <MyBidOrders
+            me={accountData}
+            signedIn={!!session}
+            loading={!!session && me.isPending}
+            error={!!session && (me.isError || (!me.isPending && !accountData))}
+            busy={busy || wallet.busy}
+            onSignIn={() => {
+              if (!wallet.account) wallet.setModal(true);
+              else if (wallet.chainId !== 143) void wallet.switchChain(143);
+              else if (!wallet.privacyAddress) void wallet.authorizeRead(['address']);
+              else signIn();
+            }}
+            onRefresh={() => {
+              if (session) void me.refetch();
+            }}
+            onResume={(intent) => {
+              if (!session || !accountData || busy) return;
+              setReview({ total: intent.total, delta: intent.delta, resumeId: intent.id });
+            }}
+          />
         </div>
         <Panel className="jubjub-bid-panel">
           <div className="panel-heading">
@@ -628,6 +625,15 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                 creating another.
               </Notice>
             )}
+            {blockedBid && (
+              <Notice>
+                An earlier payment needs attention. Check{' '}
+                <a className="text-link" href="#my-bid-orders">
+                  My bid orders
+                </a>{' '}
+                and refresh its status before making another bid.
+              </Notice>
+            )}
             <dl className="jubjub-costs">
               <div>
                 <dt>Current qualifying bid</dt>
@@ -703,6 +709,7 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
                 disabled={
                   busy ||
                   !accountData ||
+                  !!blockedBid ||
                   me.isError ||
                   (!prepared && (!active || !amount || !!amountIssue))
                 }
