@@ -203,7 +203,14 @@ export const jubjubRefundSchema = z.object({
 export type JubjubRefund = z.infer<typeof jubjubRefundSchema>;
 const challengeSchema = z.object({ id: identifier, message: z.string().min(1).max(8192) });
 const sessionSchema = z.object({ token: tokenSchema, expires: timestamp });
-export type JubjubAuthStage = 'wallet' | 'address' | 'signature' | 'proof' | 'session';
+export type JubjubAuthStage =
+  | 'wallet'
+  | 'campaign'
+  | 'address'
+  | 'challenge'
+  | 'signature'
+  | 'proof'
+  | 'session';
 export type JubjubAuthSession = z.infer<typeof sessionSchema> & {
   account: string;
   chainId: number;
@@ -435,6 +442,7 @@ export function createJubjubService(
       };
       onStage('wallet');
       await current();
+      onStage('campaign');
       const profile = await config(signal);
       await current();
       onStage('address');
@@ -447,6 +455,7 @@ export function createJubjubService(
         .toLowerCase();
       expectedAddress = address.address;
       await current();
+      onStage('challenge');
       const challenge = await guarded(
         () =>
           client.post(

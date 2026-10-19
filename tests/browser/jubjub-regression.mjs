@@ -165,6 +165,54 @@ async function assertBandCounts(bands, counts) {
 
 try {
   await runCase(
+    'origin rejection identifies the failed challenge without requesting a signature',
+    'origin-error',
+    async (page, state) => {
+      await page
+        .locator('.jubjub-bid-panel')
+        .getByRole('button', { name: 'Sign in to auction', exact: true })
+        .click();
+      await page
+        .getByRole('alert')
+        .filter({ hasText: 'Could not start campaign sign-in.' })
+        .waitFor();
+      assert.match(
+        await page.getByRole('alert').innerText(),
+        /rejected this site’s origin.*HTTP 400/,
+      );
+      assert.equal(
+        await page.locator('.jubjub-feedback').count(),
+        0,
+        'No stale wallet-approval guidance after failure',
+      );
+      assert.equal(
+        await page.evaluate(() =>
+          window.__jubjubFixture.rpcCalls.some((call) => call.method === 'personal_sign'),
+        ),
+        false,
+      );
+      assert.equal(requests(state(), '/api/jubjub/auth/session').length, 0);
+    },
+  );
+  await runCase(
+    'session rejection identifies verification failure and clears stale approval guidance',
+    'session-error',
+    async (page, state) => {
+      await page
+        .locator('.jubjub-bid-panel')
+        .getByRole('button', { name: 'Sign in to auction', exact: true })
+        .click();
+      await page
+        .getByRole('alert')
+        .filter({ hasText: 'The campaign could not verify sign-in.' })
+        .waitFor();
+      assert.match(await page.getByRole('alert').innerText(), /HTTP 401/);
+      assert.equal(await page.locator('.jubjub-feedback').count(), 0);
+      assert.equal(requests(state(), '/api/jubjub/me').length, 0);
+      assert.equal(state().funding.length, 0);
+    },
+  );
+  await runCase(
     'initial bid resumes after reload and raising pays only the difference',
     'flow',
     async (page, state) => {

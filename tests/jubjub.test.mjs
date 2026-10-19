@@ -292,7 +292,15 @@ test('P20 conversion retains six decimal places and integer precision beyond Num
 test('authentication uses the exact same challenge for both approvals and keeps tokens off public requests', async () => {
   const h = harness();
   const session = await h.run();
-  assert.deepEqual(h.stages, ['wallet', 'address', 'signature', 'proof', 'session']);
+  assert.deepEqual(h.stages, [
+    'wallet',
+    'campaign',
+    'address',
+    'challenge',
+    'signature',
+    'proof',
+    'session',
+  ]);
   assert.equal(session.rawAddress, rawAddress);
   assert.equal(session.account, account);
   assert.deepEqual(h.calls.find((call) => call.path === '/auth/challenge').body, {

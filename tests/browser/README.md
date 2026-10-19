@@ -44,7 +44,7 @@ and `JUBJUB_BROWSER_PATH` to the browser executable. `JUBJUB_ARTIFACT_DIR` can s
 the screenshot output directory; the default is `plabs-jubjub-browser` inside the
 system temporary directory.
 
-The eighteen cases cover real page interactions with synthetic responses:
+The twenty cases cover real page interactions with synthetic responses:
 
 1. Reject a 125 P20 total, place a 100 P20 bid, resume the same pending payment
    after a page reload, then raise the total to 150 P20 with a 50 P20 payment.
@@ -77,6 +77,9 @@ The eighteen cases cover real page interactions with synthetic responses:
 17. A failed history request shows an unavailable state instead of seven zero counts.
 18. All seven bands and their entry amounts remain readable at a 390 px viewport
     without horizontal overflow.
+
+19. A rejected browser origin identifies the challenge failure and makes no wallet signature request.
+20. A rejected authentication session identifies verification failure and clears stale approval guidance.
 
 Every test rejects all requests outside its local fixture origin and checks for
 browser runtime errors. Generic funding calls contain the public protocol, service,

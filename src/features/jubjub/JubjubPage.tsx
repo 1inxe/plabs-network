@@ -7,6 +7,7 @@ import {
   createJubjubService,
   formatP20,
   type JubjubAuthSession,
+  type JubjubAuthStage,
   parseP20,
   validateBid,
 } from '@/services/platform/jubjub';
@@ -21,6 +22,36 @@ import { describeBidOrder } from './bid-orders';
 import { MyBidOrders } from './MyBidOrders';
 
 const service = createJubjubService(apiEndpoints.jubjub);
+const signInStages: Record<JubjubAuthStage, { progress: string; failure: string }> = {
+  campaign: {
+    progress: 'Loading campaign configuration…',
+    failure: 'Could not load the campaign configuration.',
+  },
+  wallet: {
+    progress: 'Checking your wallet connection…',
+    failure: 'Could not verify the wallet connection.',
+  },
+  address: {
+    progress: 'Reading your privacy address…',
+    failure: 'Could not read your privacy address.',
+  },
+  challenge: {
+    progress: 'Requesting campaign sign-in…',
+    failure: 'Could not start campaign sign-in.',
+  },
+  signature: {
+    progress: 'Approve the sign-in message in your wallet…',
+    failure: 'Sign-in signature approval failed.',
+  },
+  proof: {
+    progress: 'Approve the privacy ownership proof in your wallet…',
+    failure: 'Privacy ownership approval failed.',
+  },
+  session: {
+    progress: 'Verifying your campaign sign-in…',
+    failure: 'The campaign could not verify sign-in.',
+  },
+};
 const dateLabel = (seconds: number) =>
   new Date(seconds * 1000).toLocaleString(undefined, {
     month: 'short',
@@ -203,7 +234,10 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     try {
       await task(controller.signal);
     } catch (cause) {
-      if (!controller.signal.aborted) setError(errorMessage(cause));
+      if (!controller.signal.aborted) {
+        setMessage('');
+        setError(errorMessage(cause));
+      }
     } finally {
       if (!controller.signal.aborted) {
         operation.current = null;
@@ -229,13 +263,24 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   function signIn() {
     void run(async (signal) => {
       if (!wallet.wallet) return;
-      setMessage('Approve the campaign sign-in and privacy ownership proof in your wallet.');
-      const result = await service.authenticate({
-        wallet: wallet.wallet,
-        account: wallet.account,
-        chainId: wallet.chainId,
-        signal,
-      });
+      let stage: JubjubAuthStage = 'wallet';
+      setMessage(signInStages.wallet.progress);
+      let result: JubjubAuthSession;
+      try {
+        result = await service.authenticate({
+          wallet: wallet.wallet,
+          account: wallet.account,
+          chainId: wallet.chainId,
+          signal,
+          onStage: (next) => {
+            stage = next;
+            if (!signal.aborted) setMessage(signInStages[next].progress);
+          },
+        });
+      } catch (cause) {
+        signal.throwIfAborted();
+        throw new Error(`${signInStages[stage].failure} ${errorMessage(cause)}`);
+      }
       const context = await current(signal);
       setSupported(supportsJubjubPayment(context.capabilities));
       setSession(result);

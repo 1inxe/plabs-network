@@ -35,15 +35,39 @@ export function createHttpClient(
       throw new ApiError('network', 'Unable to reach this service. Check your connection.');
     }
     const requestId = response.headers.get('x-request-id') ?? undefined;
-    if (!response.ok)
+    if (!response.ok) {
+      const failures: Record<number, string> = {
+        400: 'The service rejected this request.',
+        401: 'Authentication was rejected or expired. Sign in again.',
+        403: 'The service denied this request.',
+        404: 'The requested service route was not found.',
+        405: 'The service does not accept this request method.',
+        422: 'The service could not validate this request.',
+        429: 'Too many requests. Please wait before retrying.',
+      };
+      let message = failures[response.status] ?? 'This service is temporarily unavailable.';
+      if (
+        response.status === 400 &&
+        response.headers.get('content-type')?.includes('application/json')
+      ) {
+        const failure: unknown = await response.json().catch(() => null);
+        if (
+          failure &&
+          typeof failure === 'object' &&
+          'error' in failure &&
+          failure.error === 'origin is not allowed'
+        )
+          message =
+            'The campaign service rejected this site’s origin. Refresh the site and retry sign-in.';
+      }
+      signal?.throwIfAborted();
       throw new ApiError(
         'http',
-        response.status === 429
-          ? 'Too many requests. Please wait before retrying.'
-          : 'This service is temporarily unavailable.',
+        `${message} (HTTP ${response.status})`,
         response.status,
         requestId,
       );
+    }
     if (!response.headers.get('content-type')?.includes('application/json'))
       throw new ApiError(
         'invalid-response',

@@ -551,11 +551,21 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                 break;
               }
               case '/api/jubjub/auth/challenge':
+                if (state.scenario === 'origin-error') {
+                  res.statusCode = 400;
+                  result = { error: 'origin is not allowed' };
+                  break;
+                }
                 assert.match(body.evm, /^0x[0-9a-f]{40}$/);
                 assert.equal(body.raw, rawAddress.slice(2));
                 result = { id: `challenge-${id}`, message: authMessage };
                 break;
               case '/api/jubjub/auth/session':
+                if (state.scenario === 'session-error') {
+                  res.statusCode = 401;
+                  result = { error: 'Authentication rejected' };
+                  break;
+                }
                 assert.deepEqual(body, { id: `challenge-${id}`, signature, proof });
                 result = {
                   token: `synthetic-${id}`,

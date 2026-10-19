@@ -1,14 +1,14 @@
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { createJubjubProxyHandler, jubjubProxyEnabled } from './server/jubjub-proxy.mjs';
 
 const upstreams = {
   market: 'https://app.plabs.online/dex-matcher',
   monad: 'https://monad-indexer.plabs.online',
   ethereum: 'https://eth-indexer.plabs.online',
   platform: 'https://api.plabs.online',
-  jubjub: 'https://app.plabs.online/nft-jubjub/v1',
 };
 const proxy = Object.fromEntries(
   Object.entries(upstreams).map(([name, target]) => [
@@ -21,8 +21,27 @@ const proxy = Object.fromEntries(
     },
   ]),
 );
+const jubjubProxy: Plugin = {
+  name: 'jubjub-same-origin-proxy',
+  configureServer(server) {
+    if (!jubjubProxyEnabled(server.config.server.proxy)) return;
+    const handler = createJubjubProxyHandler();
+    server.middlewares.use((req, res, next) => {
+      if (/^\/api\/jubjub(?:\/|\?|$)/.test(req.url ?? '')) void handler(req, res);
+      else next();
+    });
+  },
+  configurePreviewServer(server) {
+    if (!jubjubProxyEnabled(server.config.preview.proxy)) return;
+    const handler = createJubjubProxyHandler();
+    server.middlewares.use((req, res, next) => {
+      if (/^\/api\/jubjub(?:\/|\?|$)/.test(req.url ?? '')) void handler(req, res);
+      else next();
+    });
+  },
+};
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), jubjubProxy],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: { port: 5180, strictPort: true, proxy },
   preview: { port: 5180, strictPort: true, proxy },
