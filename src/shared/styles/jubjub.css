@@ -1,0 +1,429 @@
+.jubjub-page {
+  max-width: 1440px;
+}
+.jubjub-breadcrumb,
+.jubjub-breadcrumb a,
+.jubjub-status-strip,
+.jubjub-sponsor {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jubjub-breadcrumb {
+  justify-content: space-between;
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-bottom: 28px;
+}
+.jubjub-breadcrumb a:hover {
+  color: var(--accent);
+}
+.jubjub-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 30px;
+}
+.jubjub-heading h1 {
+  margin: 14px 0;
+  font-size: clamp(30px, 3.5vw, 46px);
+  letter-spacing: -1.6px;
+}
+.jubjub-heading h1 span {
+  color: var(--accent);
+}
+.jubjub-heading p {
+  color: var(--text-secondary);
+  max-width: 570px;
+  line-height: 1.8;
+}
+.jubjub-heading > img {
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  padding: 12px;
+  transform: rotate(3deg);
+}
+.jubjub-status-strip {
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.jubjub-status-strip > button {
+  margin-left: auto;
+}
+.jubjub-sponsor {
+  color: var(--accent);
+}
+.jubjub-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 24px 0;
+  gap: 12px;
+}
+.jubjub-metric {
+  padding: 18px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  min-width: 0;
+}
+.jubjub-metric > span {
+  font: 10px var(--font-mono);
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+}
+.jubjub-metric strong {
+  display: block;
+  margin: 10px 0 6px;
+  font: 500 clamp(17px, 1.8vw, 23px) var(--font-mono);
+  letter-spacing: -0.8px;
+  overflow-wrap: anywhere;
+}
+.jubjub-metric small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+.jubjub-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  align-items: start;
+  gap: 20px;
+}
+.jubjub-market-column {
+  min-width: 0;
+  display: grid;
+  gap: 20px;
+}
+.jubjub-chart-panel,
+.jubjub-rules,
+.jubjub-bid-panel {
+  overflow: hidden;
+}
+.jubjub-chart-panel .panel-heading {
+  padding: 20px 22px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--line-subtle);
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.jubjub-chart-panel .eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 9px;
+}
+.jubjub-chart {
+  padding: 16px 16px 22px;
+}
+.jubjub-chart svg {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+}
+.jubjub-chart svg text {
+  fill: var(--text-muted);
+  font: 11px var(--font-mono);
+}
+.jubjub-chart svg line {
+  stroke: var(--line);
+  stroke-dasharray: 3 5;
+}
+.jubjub-chart-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 8px 12px 0;
+}
+.jubjub-chart-legend span {
+  font: 10px var(--font-mono);
+}
+.jubjub-chart-legend i {
+  display: inline-block;
+  width: 12px;
+  border-top: 2px solid currentColor;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.jubjub-chart-legend strong {
+  display: block;
+  color: var(--text);
+  padding-left: 18px;
+  margin-top: 7px;
+  font-weight: 400;
+}
+.jubjub-chart-empty {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--text-secondary);
+}
+.jubjub-rules ol {
+  list-style: none;
+  margin: 0;
+  padding: 22px;
+  display: grid;
+  gap: 22px;
+}
+.jubjub-rules li {
+  display: flex;
+  gap: 16px;
+}
+.jubjub-rules li > span {
+  font: 11px var(--font-mono);
+  color: var(--accent);
+  border: 1px solid var(--line);
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.jubjub-rules li strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.jubjub-rules p {
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.jubjub-custody {
+  display: flex;
+  align-items: start;
+  gap: 10px;
+  padding: 18px 22px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--line);
+}
+.jubjub-custody > svg {
+  flex-shrink: 0;
+  color: var(--amber);
+  margin-top: 3px;
+}
+.jubjub-bid-panel {
+  padding: 0 20px 20px;
+}
+.jubjub-bid-panel > .panel-heading {
+  margin: 0 -20px 20px;
+  padding: 20px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+.jubjub-rules > .panel-heading {
+  padding: 20px 22px;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--line-subtle);
+}
+.jubjub-bid-panel .notice {
+  margin: 14px 0;
+  line-height: 1.7;
+  font-size: 11px;
+}
+.jubjub-confirmed {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.jubjub-confirmed strong {
+  font: 500 18px var(--font-mono);
+  color: var(--accent);
+}
+.jubjub-confirmed small {
+  font-size: 11px;
+}
+.jubjub-amount-label {
+  display: block;
+  margin: 22px 0 10px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.jubjub-amount {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-0);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+}
+.jubjub-amount:focus-within {
+  border-color: var(--accent);
+}
+.jubjub-amount.invalid {
+  border-color: var(--red);
+}
+.jubjub-amount input {
+  width: 100%;
+  font: 400 28px var(--font-mono);
+  letter-spacing: -1px;
+}
+.jubjub-amount > span {
+  font: 11px var(--font-mono);
+  color: var(--text-secondary);
+}
+.jubjub-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.jubjub-presets button {
+  color: var(--text-secondary);
+  padding: 7px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  border-radius: 4px;
+  font: 10px var(--font-mono);
+}
+.jubjub-presets button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent-strong);
+}
+.jubjub-helper {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin: 10px 0;
+}
+.jubjub-helper.text-red {
+  color: var(--red);
+}
+.jubjub-costs,
+.jubjub-position dl,
+.jubjub-review {
+  margin: 22px 0;
+  display: grid;
+  gap: 10px;
+  font-size: 11px;
+}
+.jubjub-costs > div,
+.jubjub-position dl > div,
+.jubjub-review > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.jubjub-costs dt,
+.jubjub-position dt,
+.jubjub-review dt {
+  color: var(--text-secondary);
+}
+.jubjub-costs dd,
+.jubjub-position dd,
+.jubjub-review dd {
+  margin: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+.jubjub-position {
+  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding-top: 22px;
+}
+.jubjub-position .eyebrow {
+  font-size: 10px;
+}
+.jubjub-footnote {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  margin-top: 20px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+.jubjub-footnote svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.jubjub-feedback,
+.jubjub-error {
+  padding: 12px;
+  margin: 14px 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.jubjub-feedback {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+.jubjub-error {
+  color: var(--red);
+}
+.jubjub-review {
+  font-size: 13px;
+  gap: 16px;
+}
+.jubjub-review + .notice {
+  margin-bottom: 22px;
+}
+@media (max-width: 1190px) {
+  .jubjub-workspace {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 14px;
+  }
+  .jubjub-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 1000px) {
+  .jubjub-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jubjub-bid-panel {
+    grid-row: 1;
+  }
+  .jubjub-heading > img {
+    width: 100px;
+    height: 100px;
+  }
+}
+@media (max-width: 600px) {
+  .jubjub-heading {
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .jubjub-heading > img {
+    width: 64px;
+    height: 64px;
+    padding: 4px;
+    margin-top: 28px;
+  }
+  .jubjub-heading h1 {
+    font-size: 28px;
+    letter-spacing: -1px;
+  }
+  .jubjub-status-strip {
+    gap: 12px;
+  }
+  .jubjub-metric {
+    padding: 14px;
+  }
+  .jubjub-metrics {
+    gap: 8px;
+  }
+  .jubjub-chart {
+    padding: 12px 4px 20px;
+  }
+}

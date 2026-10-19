@@ -50,6 +50,7 @@ export type Capabilities = {
     dexTrading?: boolean;
     unifiedConnect?: boolean;
     privacyOwnership?: boolean;
+    jubjubBidding?: boolean;
   };
   networks: WalletNetwork[];
 };
@@ -79,6 +80,13 @@ export type PrivacyOwnershipProof = {
   s_hex: string;
 };
 export interface WalletAdapter {
+  fundJubjubBid?(request: { intentId: string; token: string }): Promise<{
+    intentId: string;
+    state: 'pending' | 'confirmed' | 'failed';
+    jobId?: string;
+    txHash?: string;
+    message?: string;
+  }>;
   signMessage?(message: string, address: string): Promise<string>;
   provePrivacyOwnership?(message: string, privacyAddress: string): Promise<PrivacyOwnershipProof>;
   requestAccess?(scopes: PrivacyReadScope[]): Promise<PrivacySession>;

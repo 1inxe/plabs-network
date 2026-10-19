@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, ArrowUpRight, Fingerprint, Gem, LockKeyhole } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { platformQueries } from '@/services/platform';
 import { unavailableFeatures } from '@/shared/config/product';
 import { Badge, Modal, Notice, Panel, Segmented } from '@/shared/ui';
@@ -77,8 +78,11 @@ export function CollectiblesPage() {
         />
       </div>
       <Notice>
-        Whitelist checks are available. Registration, minting and private NFT holdings are not
-        available in this app yet.
+        JubJub privacy bidding is now available.{' '}
+        <Link className="text-link" to="/privasea/jubjub">
+          Open the P20 auction →
+        </Link>{' '}
+        You can also check your Genesis whitelist below.
       </Notice>
       <div hidden={tab !== 'whitelist'}>
         <div className="sea-hero-grid">

@@ -9,6 +9,7 @@ const Trading = lazy(() => import('@/features/trading'));
 const Explorer = lazy(() => import('@/features/explorer'));
 const History = lazy(() => import('@/features/history'));
 const Collectibles = lazy(() => import('@/features/collectibles'));
+const Jubjub = lazy(() => import('@/features/jubjub'));
 const Ecosystem = lazy(() => import('@/features/ecosystem'));
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
           { path: 'shield', element: <Navigate to="/assets?mode=deposit" replace /> },
           { path: 'privacyfi', element: <Navigate to="/assets" replace /> },
           { path: 'privasea/whitelist', element: <Navigate to="/p-sea" replace /> },
+          { path: 'privasea/jubjub', element: <Jubjub /> },
           { path: 'privasea', element: <Navigate to="/p-sea" replace /> },
           { path: 'browser', element: <Navigate to="/explorer" replace /> },
           { path: 'privacyfun', element: <Navigate to="/p-fun" replace /> },

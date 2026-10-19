@@ -1,5 +1,9 @@
 # PLabs Network
 
+新增 **JubJub 拍卖**：运行 `pnpm dev` 后访问 `http://127.0.0.1:5180/privasea/jubjub`。支持实时竞价、隐私身份登录、出价/加价、原付款恢复与结算退款查询。出价需重新构建并加载带 `jubjubBidding` 能力的 PLabs Wallet；证明与付款恢复资料保留在钱包内。
+
+`VITE_JUBJUB_API` 默认 `/api/jubjub`，开发服务器和附带的 Nginx 配置转发至官方 `/nft-jubjub/v1`，保留活动 Bearer 认证。玩法和接口见 [REA 研究记录](docs/jubjub-research.md)。
+
 [English](README.md) | **简体中文**
 
 PLabs Network 将隐私资产管理、PEX 交易和链上活动整合在一个应用中。连接 PLabs Wallet 即可管理资产并确认交易，密钥管理和证明生成均在钱包内完成。

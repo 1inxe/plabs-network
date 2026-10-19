@@ -5,6 +5,16 @@ import type { PrivacyOwnershipProof, WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
+    async fundJubjubBid(request) {
+      try {
+        return (await provider.request({
+          method: 'plabs_fundJubjubBid',
+          params: [request],
+        })) as Awaited<ReturnType<NonNullable<WalletAdapter['fundJubjubBid']>>>;
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
     signMessage: (message, address) => sdk.evm.signMessage(message, address),
     // Bridge the new RPC while consumers retain the published SDK version.
     async provePrivacyOwnership(message, privacyAddress) {

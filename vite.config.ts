@@ -8,6 +8,7 @@ const upstreams = {
   monad: 'https://monad-indexer.plabs.online',
   ethereum: 'https://eth-indexer.plabs.online',
   platform: 'https://api.plabs.online',
+  jubjub: 'https://app.plabs.online/nft-jubjub/v1',
 };
 const proxy = Object.fromEntries(
   Object.entries(upstreams).map(([name, target]) => [

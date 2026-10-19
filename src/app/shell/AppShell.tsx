@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   BookOpen,
   ChartCandlestick,
+  Gavel,
   Gem,
   History,
   LockKeyhole,
@@ -27,6 +28,7 @@ const nav = [
   { to: '/history', label: 'Activity', icon: History },
   { to: '/explorer', label: 'Explorer', icon: ScanSearch },
   { to: '/p-sea', label: 'NFT gallery', icon: Gem, section: 'DISCOVER', badge: 'Check' },
+  { to: '/privasea/jubjub', label: 'JubJub auction', icon: Gavel, badge: 'P20' },
   {
     to: '/p-fun',
     label: 'Token launch',

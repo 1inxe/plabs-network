@@ -14,6 +14,7 @@ const schema = z.object({
   VITE_MONAD_API: apiBaseWithDefault('/api/monad'),
   VITE_ETHEREUM_API: apiBaseWithDefault('/api/ethereum'),
   VITE_PLATFORM_API: apiBaseWithDefault('/api/platform'),
+  VITE_JUBJUB_API: apiBaseWithDefault('/api/jubjub'),
 });
 export const env = schema.parse(import.meta.env);
 export const apiEndpoints = {
@@ -21,4 +22,5 @@ export const apiEndpoints = {
   monad: env.VITE_MONAD_API,
   ethereum: env.VITE_ETHEREUM_API,
   platform: env.VITE_PLATFORM_API,
+  jubjub: env.VITE_JUBJUB_API,
 };

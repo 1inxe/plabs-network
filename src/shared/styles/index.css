@@ -6,6 +6,7 @@
 @import './drawer.css';
 @import './responsive.css';
 @import './notifications.css';
+@import './jubjub.css';
 @theme {
   --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
