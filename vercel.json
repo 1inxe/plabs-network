@@ -21,6 +21,10 @@
       "destination": "https://api.plabs.online/:path*"
     },
     {
+      "source": "/api/jubjub/:path*",
+      "destination": "https://app.plabs.online/nft-jubjub/v1/:path*"
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     },
