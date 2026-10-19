@@ -51,6 +51,7 @@ export type Capabilities = {
     unifiedConnect?: boolean;
     privacyOwnership?: boolean;
     jubjubBidding?: boolean;
+    sponsoredPrivacyTransfers?: boolean;
   };
   networks: WalletNetwork[];
 };
@@ -79,7 +80,34 @@ export type PrivacyOwnershipProof = {
   r_y_hex: string;
   s_hex: string;
 };
+/** Bridge types until the published SDK includes the generic sponsored-payment API. */
+export type SponsoredPrivacyTransactionRequest = {
+  protocol: 'plabs-custody-v1';
+  apiBase: string;
+  campaignId: string;
+  rulesHash: string;
+  intentId: string;
+  token: string;
+  payment: {
+    chainId: 143;
+    poolAddress: string;
+    recipientRaw: string;
+    amountRaw: string;
+    memoPrefixHex: string;
+  };
+};
+export type SponsoredPrivacyTransactionResult = {
+  id: string;
+  intentId: string;
+  state: 'pending' | 'confirmed' | 'failed';
+  jobId?: string;
+  txHash?: string;
+  message?: string;
+};
 export interface WalletAdapter {
+  sendSponsoredTransaction?(
+    request: SponsoredPrivacyTransactionRequest,
+  ): Promise<SponsoredPrivacyTransactionResult>;
   fundJubjubBid?(request: { intentId: string; token: string }): Promise<{
     intentId: string;
     state: 'pending' | 'confirmed' | 'failed';

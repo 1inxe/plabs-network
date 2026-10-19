@@ -157,6 +157,15 @@ try {
       assert.equal(await page.getByLabel('Saved total bid', { exact: true }).inputValue(), '100');
       assert.equal(state().funding.length, 1);
       assert.equal(state().confirmedTotal, 0n);
+      assert.equal(
+        await page.evaluate(
+          () =>
+            window.__jubjubFixture.rpcCalls.filter(
+              (call) => call.method === 'plabs_sendSponsoredPrivacyTransaction',
+            ).length,
+        ),
+        1,
+      );
       await page.reload();
       await signIn(page);
       await reviewPayment(page, { total: '100', delta: '100', resume: true });
@@ -183,14 +192,66 @@ try {
         false,
       );
       const fundingCalls = await page.evaluate(() =>
-        window.__jubjubFixture.rpcCalls.filter((call) => call.method === 'plabs_fundJubjubBid'),
-      );
-      assert.ok(
-        fundingCalls.every(
-          (call) => Object.keys(call.params[0]).sort().join(',') === 'intentId,token',
+        window.__jubjubFixture.rpcCalls.filter(
+          (call) => call.method === 'plabs_sendSponsoredPrivacyTransaction',
         ),
       );
+      // The page reload resets its provider call log; these are resume and top-up.
+      assert.equal(fundingCalls.length, 2);
+      assert.deepEqual(
+        fundingCalls.map((call) => call.params[0].payment.amountRaw),
+        ['100000000', '50000000'],
+      );
+      assert.ok(fundingCalls.every((call) => call.params[0].protocol === 'plabs-custody-v1'));
+      assert.equal(
+        await page.evaluate(() =>
+          window.__jubjubFixture.rpcCalls.some((call) => call.method === 'plabs_fundJubjubBid'),
+        ),
+        false,
+      );
       await capture(page, 'confirmed-desktop.png');
+    },
+  );
+
+  for (const scenario of ['generic-only', 'legacy']) {
+    await runCase(
+      `payment uses the ${scenario} wallet capability`,
+      scenario,
+      async (page, state) => {
+        await signIn(page);
+        await page.getByLabel('Total bid amount', { exact: true }).fill('100');
+        await reviewPayment(page, { total: '100', delta: '100' });
+        await page.getByRole('button', { name: 'Review saved bid', exact: true }).waitFor();
+        assert.equal(state().funding.length, 1);
+        const methods = await page.evaluate(() =>
+          window.__jubjubFixture.rpcCalls.map((call) => call.method),
+        );
+        assert.equal(
+          methods.includes('plabs_sendSponsoredPrivacyTransaction'),
+          scenario === 'generic-only',
+        );
+        assert.equal(methods.includes('plabs_fundJubjubBid'), scenario === 'legacy');
+      },
+    );
+  }
+  await runCase(
+    'a rejected generic payment never falls back to a second legacy payment',
+    'generic-reject',
+    async (page, state) => {
+      await signIn(page);
+      await page.getByLabel('Total bid amount', { exact: true }).fill('100');
+      await reviewPayment(page, { total: '100', delta: '100' });
+      await page
+        .getByRole('alert')
+        .filter({ hasText: 'Request declined in your wallet' })
+        .waitFor();
+      assert.equal(state().funding.length, 0);
+      assert.equal(
+        await page.evaluate(() =>
+          window.__jubjubFixture.rpcCalls.some((call) => call.method === 'plabs_fundJubjubBid'),
+        ),
+        false,
+      );
     },
   );
 

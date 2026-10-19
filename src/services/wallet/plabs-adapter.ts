@@ -5,6 +5,16 @@ import type { PrivacyOwnershipProof, WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
+    async sendSponsoredTransaction(request) {
+      try {
+        return (await provider.request({
+          method: 'plabs_sendSponsoredPrivacyTransaction',
+          params: [request],
+        })) as Awaited<ReturnType<NonNullable<WalletAdapter['sendSponsoredTransaction']>>>;
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
     async fundJubjubBid(request) {
       try {
         return (await provider.request({

@@ -59,6 +59,8 @@ All paths below are relative to `/nft-jubjub/v1` on the official application ori
 
 ## Authentication
 
+Implementation update (2026-10-20): the application now prefers `plabs_sendSponsoredPrivacyTransaction` with a typed `plabs-custody-v1` payment descriptor. Auction constants stay in the application. The wallet's common transfer engine supports reviewed Monad privacy pools and approved PLabs campaign namespaces, independently verifies the current identity and exact intent, generates the memo using the authenticated intent psi, and preserves the encrypted proof for retries. The older `plabs_fundJubjubBid` method is a compatibility adapter into that same engine and journal. The generic interface is protocol-specific, not a promise that arbitrary sponsor backends or proof formats will work. The SDK source exports the generic method; no npm release is required by the site's provider bridge.
+
 1. `POST /auth/challenge` with `{evm, raw}`. `evm` is the lowercase 20-byte EVM address with `0x`; `raw` is the lowercase 43-byte privacy address (86 hexadecimal characters), without `0x`.
 2. Response is `{id, message}`. Sign the exact UTF-8 message with EVM `personal_sign` (official EIP-1193 params are `[utf8MessageHex, evm]`).
 3. Separately call the local prover ownership signing method with `{bn254IvkHex, rawAddressHex: raw, message}`. The current extension provides `plabs_provePrivacyOwnership`; privacy keys stay inside the extension. The public proof is `{version: "bjj-schnorr-v1", r_x_hex, r_y_hex, s_hex}`.

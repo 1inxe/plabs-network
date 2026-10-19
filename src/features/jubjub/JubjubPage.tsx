@@ -10,6 +10,7 @@ import {
   parseP20,
   validateBid,
 } from '@/services/platform/jubjub';
+import { submitJubjubPayment, supportsJubjubPayment } from '@/services/platform/jubjub-payment';
 import { errorMessage } from '@/shared/api/errors';
 import { apiEndpoints } from '@/shared/config/env';
 import { short } from '@/shared/lib/format';
@@ -85,7 +86,7 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     total: string;
     delta: string;
   } | null>(null);
-  const [supported, setSupported] = useState(wallet.capabilities?.methods.jubjubBidding === true);
+  const [supported, setSupported] = useState(supportsJubjubPayment(wallet.capabilities));
   const [now, setNow] = useState(Date.now());
   const operation = useRef<AbortController | null>(null);
   const me = useQuery({
@@ -236,7 +237,7 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
         signal,
       });
       const context = await current(signal);
-      setSupported(context.capabilities.methods.jubjubBidding === true);
+      setSupported(supportsJubjubPayment(context.capabilities));
       setSession(result);
       setMessage('Signed in. Your current bid and settlement status are available below.');
     });
@@ -266,7 +267,7 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
     setReview(null);
     void run(async (signal) => {
       const context = await current(signal);
-      if (!context.capabilities.methods.jubjubBidding || !wallet.wallet?.fundJubjubBid) {
+      if (!supportsJubjubPayment(context.capabilities) || !wallet.wallet || !config) {
         setSupported(false);
         throw new Error(
           'Reload the updated PLabs Wallet extension and reconnect to enable JubJub bidding.',
@@ -332,8 +333,11 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
       setMessage(
         `Approve ${formatP20(intent.delta)} P20 in your wallet. Proof generation may take a few minutes.`,
       );
-      const result = await wallet.wallet.fundJubjubBid({
-        intentId: intent.id,
+      const result = await submitJubjubPayment({
+        wallet: wallet.wallet,
+        capabilities: context.capabilities,
+        config,
+        intent,
         token: session.token,
       });
       await current(signal);

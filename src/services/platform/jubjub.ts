@@ -163,8 +163,8 @@ const jobSchema = z.object({
   status: z.string().min(1).max(32),
   txHash: hash.nullish(),
   error: z.string().max(2048).nullish(),
-  units: noteUnits.optional(),
-  createdAt: timestamp.optional(),
+  units: noteUnits.nullish(),
+  createdAt: timestamp.nullish(),
 });
 const custodySchema = z.object({
   settled: z.boolean(),
@@ -177,18 +177,19 @@ const custodySchema = z.object({
 export const jubjubMeSchema = z.object({
   owner: z.unknown().optional(),
   position: z
-    .object({ version: count, total: noteUnits.optional(), updatedAt: timestamp.optional() })
+    .object({ version: count, total: noteUnits.nullish(), updatedAt: timestamp.nullish() })
     .nullish(),
   intents: z.array(jubjubBidIntentSchema),
   jobs: z.array(jobSchema),
   summary: jubjubSummarySchema,
   qualification: z
     .object({
-      rank: count.positive().nullable(),
-      eligible: z.boolean().nullable(),
-      final: z.boolean(),
+      rank: count.positive().nullish().default(null),
+      eligible: z.boolean().nullish().default(null),
+      final: z.boolean().default(false),
     })
-    .default({ rank: null, eligible: null, final: false }),
+    .nullish()
+    .transform((qualification) => qualification ?? { rank: null, eligible: null, final: false }),
   custody: custodySchema.nullish(),
 });
 export type JubjubMe = z.infer<typeof jubjubMeSchema>;

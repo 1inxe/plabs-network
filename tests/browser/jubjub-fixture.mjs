@@ -316,7 +316,8 @@ function injectedProvider() {
               personalSign: true,
               privacyRead: true,
               privacyOwnership: true,
-              jubjubBidding: scenario !== 'old',
+              jubjubBidding: !['old', 'generic-only'].includes(scenario),
+              sponsoredPrivacyTransfers: !['old', 'legacy'].includes(scenario),
               unifiedConnect: true,
             },
             networks: [
@@ -370,10 +371,21 @@ function injectedProvider() {
           if (args[0].message !== data.authMessage || args[0].privacyAddress !== data.rawAddress)
             throw new Error('Unexpected fixture privacy proof request.');
           return data.proof;
+        case 'plabs_sendSponsoredPrivacyTransaction':
         case 'plabs_fundJubjubBid': {
           if (scenario === 'old')
             throw new Error('This fixture extension does not support JubJub.');
-          if (Object.keys(args[0]).sort().join(',') !== 'intentId,token')
+          if (scenario === 'generic-reject' && method === 'plabs_sendSponsoredPrivacyTransaction')
+            throw { code: 4001, message: 'User rejected sponsored payment' };
+          if (
+            (scenario === 'generic-only' && method === 'plabs_fundJubjubBid') ||
+            (scenario === 'legacy' && method === 'plabs_sendSponsoredPrivacyTransaction')
+          )
+            throw new Error('The site ignored the wallet payment capabilities.');
+          if (
+            method === 'plabs_fundJubjubBid' &&
+            Object.keys(args[0]).sort().join(',') !== 'intentId,token'
+          )
             throw new Error('The site supplied unexpected funding material.');
           const response = await fetch('/__jubjub_fixture/fund', {
             method: 'POST',
@@ -537,6 +549,28 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                 assert.equal(body.token, `synthetic-${id}`);
                 const intent = state.intents.find((item) => item.id === body.intentId);
                 assert.ok(intent, 'Missing prepared intent');
+                if (body.payment) {
+                  assert.deepEqual(Object.keys(body).sort(), [
+                    'apiBase',
+                    'campaignId',
+                    'intentId',
+                    'payment',
+                    'protocol',
+                    'rulesHash',
+                    'token',
+                  ]);
+                  assert.equal(body.protocol, 'plabs-custody-v1');
+                  assert.equal(body.apiBase, 'https://app.plabs.online/nft-jubjub/v1');
+                  assert.equal(body.campaignId, state.config.rules.id);
+                  assert.equal(body.rulesHash, state.config.rulesHash);
+                  assert.deepEqual(body.payment, {
+                    chainId: 143,
+                    poolAddress: pool,
+                    recipientRaw: collector,
+                    amountRaw: intent.delta,
+                    memoPrefixHex: '0x5045524332302d4a55424a55422d5032302d763100',
+                  });
+                }
                 state.funding.push({
                   intentId: intent.id,
                   total: intent.total,
@@ -555,6 +589,7 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                   } else state.confirmedTransactions += 1;
                 }
                 result = {
+                  id: `synthetic-payment-${intent.id}`,
                   intentId: intent.id,
                   state: pending ? 'pending' : 'confirmed',
                   txHash: `0x${'cd'.repeat(32)}`,

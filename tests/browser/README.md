@@ -44,7 +44,7 @@ and `JUBJUB_BROWSER_PATH` to the browser executable. `JUBJUB_ARTIFACT_DIR` can s
 the screenshot output directory; the default is `plabs-jubjub-browser` inside the
 system temporary directory.
 
-The eleven cases cover real page interactions with synthetic responses:
+The fourteen cases cover real page interactions with synthetic responses:
 
 1. Reject a 125 P20 total, place a 100 P20 bid, resume the same pending payment
    after a page reload, then raise the total to 150 P20 with a 50 P20 payment.
@@ -66,17 +66,23 @@ The eleven cases cover real page interactions with synthetic responses:
     account clears private order rows.
 11. Populated analysis and private order panels fit a 390 px viewport without
     horizontal overflow.
+12. A wallet exposing only the generic sponsored-transfer capability can submit a bid.
+13. A wallet exposing only the earlier JubJub capability remains compatible.
+14. Rejecting a generic payment never triggers a second attempt through the legacy API.
 
 Every test rejects all requests outside its local fixture origin and checks for
-browser runtime errors. Funding calls contain only the intent ID and temporary
-session token. Signatures, wallet responses, funds, and refunds are synthetic;
+browser runtime errors. Generic funding calls contain the public protocol, service,
+campaign, intent, payment fields, and temporary session token. Proof material and
+private notes never enter these calls. Legacy calls keep their original intent ID
+and token shape. Signatures, wallet responses, funds, and refunds are synthetic;
 the fixture never reaches the production API. The fixture preserves the reviewed
 deployment addresses and recomputes the official Keccak rules commitment for its
 test schedule. It does not test real proof generation or on-chain confirmation.
 
 For manual inspection, run `node tests/browser/jubjub-fixture.mjs` and open
 `http://127.0.0.1:5182/privasea/jubjub`. Select another scenario with
-`?scenario=refund`, `reject`, `network`, `stale`, `old`, `locked`, or `analytics`. The `stale`
+`?scenario=refund`, `reject`, `network`, `stale`, `old`, `locked`, `analytics`,
+`generic-only`, `legacy`, or `generic-reject`. The `stale`
 scenario holds the signature until the browser console calls
 `window.__jubjubFixture.changeAccount()` followed by
 `window.__jubjubFixture.releaseSignature()`. All pages display a test banner.

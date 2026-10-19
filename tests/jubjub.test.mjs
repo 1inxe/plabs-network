@@ -479,3 +479,93 @@ test('malformed monetary fields fail as contract errors and absent qualification
     final: false,
   });
 });
+
+test('missing and null qualification metadata load orders without claiming a final result', async () => {
+  for (const qualification of [undefined, null, {}, { rank: null, eligible: null }]) {
+    const h = harness();
+    h.results['/me'].qualification = qualification;
+    const result = await h.service.me('token');
+    assert.deepEqual(result.intents, h.results['/me'].intents);
+    assert.deepEqual(result.qualification, { rank: null, eligible: null, final: false });
+  }
+  const h = harness();
+  h.results['/me'].qualification = { eligible: false };
+  assert.deepEqual((await h.service.me('token')).qualification, {
+    rank: null,
+    eligible: false,
+    final: false,
+  });
+  h.results['/me'].qualification = { rank: null, eligible: false, final: true };
+  assert.deepEqual((await h.service.me('token')).qualification, {
+    rank: null,
+    eligible: false,
+    final: true,
+  });
+});
+
+test('nullable sponsor and position metadata preserve authenticated bid records', async () => {
+  const h = harness();
+  h.results['/me'].jobs = [
+    {
+      id: 'job-null-metadata',
+      purpose: 'bid',
+      intentId: intent.id,
+      status: 'submitted',
+      units: null,
+      createdAt: null,
+    },
+    { id: 'job-no-metadata', purpose: 'bid', intentId: intent.id, status: 'confirmed' },
+  ];
+  h.results['/me'].position = { version: 1, total: null, updatedAt: null };
+  h.results['/me'].qualification = null;
+  const result = await h.service.me('token');
+  assert.deepEqual(result.intents, h.results['/me'].intents);
+  assert.deepEqual(result.jobs, h.results['/me'].jobs);
+  assert.deepEqual(result.position, { version: 1, total: null, updatedAt: null });
+  assert.equal(result.qualification.final, false);
+});
+
+test('optional account metadata never weakens amounts, bid identity or campaign binding', async () => {
+  const job = { id: 'job', purpose: 'bid', status: 'submitted', intentId: intent.id };
+  const cases = [
+    (me) => {
+      me.position = { version: 1, total: 'not-money', updatedAt: null };
+    },
+    (me) => {
+      me.jobs = [{ ...job, units: '-1', createdAt: null }];
+    },
+    (me) => {
+      me.jobs = [{ ...job, units: null, createdAt: 'yesterday' }];
+    },
+    (me) => {
+      me.position = { version: null, total: null };
+    },
+    (me) => {
+      me.qualification = { eligible: 'false' };
+    },
+    (me) => {
+      me.qualification = { final: null };
+    },
+    (me) => {
+      me.summary.campaignId = 'other-campaign';
+    },
+    (me) => {
+      me.summary.rulesHash = `0x${'ff'.repeat(32)}`;
+    },
+    ...['id', 'total', 'delta', 'version', 'status'].flatMap((key) => [
+      (me) => {
+        delete me.intents[0][key];
+      },
+      (me) => {
+        me.intents[0][key] = null;
+      },
+    ]),
+  ];
+  for (const mutate of cases) {
+    const h = harness();
+    await h.service.config();
+    h.results['/me'].qualification = null;
+    mutate(h.results['/me']);
+    await assert.rejects(h.service.me('token'), (error) => error.code === 'invalid-response');
+  }
+});
