@@ -21,8 +21,36 @@
       "destination": "https://api.plabs.online/:path*"
     },
     {
-      "source": "/api/jubjub/:path*",
-      "destination": "/api/jubjub-proxy?route=:path*"
+      "source": "/api/jubjub/config",
+      "destination": "/api/jubjub-proxy?route=config"
+    },
+    {
+      "source": "/api/jubjub/summary",
+      "destination": "/api/jubjub-proxy?route=summary"
+    },
+    {
+      "source": "/api/jubjub/history",
+      "destination": "/api/jubjub-proxy?route=history"
+    },
+    {
+      "source": "/api/jubjub/me",
+      "destination": "/api/jubjub-proxy?route=me"
+    },
+    {
+      "source": "/api/jubjub/auth/challenge",
+      "destination": "/api/jubjub-proxy?route=auth/challenge"
+    },
+    {
+      "source": "/api/jubjub/auth/session",
+      "destination": "/api/jubjub-proxy?route=auth/session"
+    },
+    {
+      "source": "/api/jubjub/bids/prepare",
+      "destination": "/api/jubjub-proxy?route=bids/prepare"
+    },
+    {
+      "source": "/api/jubjub/refund",
+      "destination": "/api/jubjub-proxy?route=refund"
     },
     {
       "source": "/((?!api/|assets/).*)",

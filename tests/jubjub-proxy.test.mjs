@@ -280,6 +280,46 @@ test('Vercel rewrite query mode supports history and authenticated POSTs without
     await untrusted.close();
   }
 });
+test('Vercel uses literal endpoint rewrites without injecting wildcard query captures', async () => {
+  const config = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
+  const f = await fixture({ routeMode: 'query', trustForwardedProto: true });
+  try {
+    for (const [route, method] of [
+      ['config', 'GET'],
+      ['summary', 'GET'],
+      ['history', 'GET'],
+      ['me', 'GET'],
+      ['auth/challenge', 'POST'],
+      ['auth/session', 'POST'],
+      ['bids/prepare', 'POST'],
+      ['refund', 'POST'],
+    ]) {
+      const rewrite = config.rewrites.find((rule) => rule.source === `/api/jubjub/${route}`);
+      assert.equal(rewrite?.destination, `/api/jubjub-proxy?route=${route}`);
+      assert.ok(!rewrite.source.includes(':'));
+      const path = `${rewrite.destination}${route === 'history' ? '&after=500' : ''}`;
+      const response = await rawRequest(f.url, path, {
+        method,
+        headers: {
+          Host: 'project.vercel.app',
+          Origin: 'https://project.vercel.app',
+          'X-Forwarded-Proto': 'https',
+          Authorization: 'Bearer synthetic-token',
+          'Content-Type': 'application/json',
+        },
+        ...(method === 'POST' ? { body: '{}' } : {}),
+      });
+      assert.equal(response.status, 200, route);
+    }
+    assert.equal(f.calls.length, 8);
+    assert.equal(
+      config.rewrites.some((rule) => rule.source === '/api/jubjub/:path*'),
+      false,
+    );
+  } finally {
+    await f.close();
+  }
+});
 test('upstream JSON errors preserve status and message, but cookies never reach the browser', async () => {
   for (const status of [400, 401, 403, 429, 503]) {
     const f = await fixture({}, (_req, res) => {
@@ -383,7 +423,7 @@ test('an explicit empty Vite proxy map keeps fixture requests local and installs
   }
   const vercel = JSON.parse(await readFile(new URL('../vercel.json', import.meta.url), 'utf8'));
   assert.equal(
-    vercel.rewrites.find((rule) => rule.source === '/api/jubjub/:path*').destination,
-    '/api/jubjub-proxy?route=:path*',
+    vercel.rewrites.find((rule) => rule.source === '/api/jubjub/auth/challenge').destination,
+    '/api/jubjub-proxy?route=auth/challenge',
   );
 });
