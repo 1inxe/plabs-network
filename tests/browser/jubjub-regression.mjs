@@ -134,6 +134,34 @@ async function assertWindow(page, { bidders, committed, updates }) {
   await assertAnalyticsStat(page, 'Committed P20 change', committed);
   await assertAnalyticsStat(page, 'Public updates', updates);
 }
+const distributionBandIds = [
+  '100-500',
+  '500-1000',
+  '1000-5000',
+  '5000-10000',
+  '10000-50000',
+  '50000-100000',
+  'over-100000',
+];
+async function distributionRows(page) {
+  const region = page.getByRole('region', { name: 'First-bid distribution', exact: true });
+  const table = region.getByRole('table', { name: 'First-bid amount bands', exact: true });
+  await table.waitFor();
+  return {
+    region,
+    table,
+    bands: distributionBandIds.map((id) => table.locator(`[data-band-id="${id}"]`)),
+  };
+}
+async function assertBandCounts(bands, counts) {
+  assert.equal(bands.length, counts.length);
+  for (const [index, row] of bands.entries())
+    assert.equal(
+      (await row.locator('td').nth(0).innerText()).trim(),
+      String(counts[index]),
+      distributionBandIds[index],
+    );
+}
 
 try {
   await runCase(
@@ -566,6 +594,143 @@ try {
         'Analytics tables and populated orders must not cause horizontal mobile overflow',
       );
       await capture(page, 'analytics-orders-mobile.png');
+    },
+    { width: 390, height: 844 },
+  );
+
+  await runCase(
+    'first bid bands count entry positions once and update only the new participants band',
+    'distribution',
+    async (page, state) => {
+      const { region, table, bands } = await distributionRows(page);
+      await region.getByText(/Estimated from public snapshots of first participation/).waitFor();
+      await assertBandCounts(bands, [2, 2, 2, 2, 2, 2, 1]);
+      assert.equal(
+        await table.locator('tbody tr').count(),
+        7,
+        'No unknown positions in a fully identifiable fixture',
+      );
+      const entryCapital = ['550', '1,450', '5,950', '14,950', '59,950', '150,000', '100,050'];
+      for (const [index, row] of bands.entries()) {
+        assert.equal((await row.locator('td').nth(2).innerText()).trim(), entryCapital[index]);
+        assert.equal(
+          (await row.locator('td').nth(1).innerText()).trim(),
+          index === 6 ? '7.7%' : '15.4%',
+        );
+      }
+      assert.match(
+        await region.locator('.jubjub-distribution-coverage').innerText(),
+        /13\s*\/\s*13 positions classified/,
+      );
+      await region.getByText('100% coverage', { exact: true }).waitFor();
+      assert.match(await region.locator('.jubjub-distribution-summary').innerText(), /332,900 P20/);
+      assert.match(
+        await region.locator('.jubjub-distribution-summary').innerText(),
+        /1 later top-up updates excluded/,
+      );
+      assert.equal(state().publicHistory.at(-1).positions, 13);
+      assert.equal(
+        state().publicHistory.at(-1).committedUnits,
+        '333400000000',
+        'The 500 P20 top-up belongs to public committed funds, not entry capital',
+      );
+      assert.equal(
+        (await bands[5].locator('td').nth(2).innerText()).trim(),
+        '150,000',
+        '100,000 is in the inclusive sixth band',
+      );
+      assert.equal(
+        (await bands[6].locator('td').nth(2).innerText()).trim(),
+        '100,050',
+        'Only strictly greater than 100,000 belongs to the final band',
+      );
+      await capture(page, 'first-bid-distribution-desktop.png');
+
+      await page.evaluate(() => window.__jubjubFixture.publishUpdate());
+      await page.getByRole('button', { name: 'Refresh auction', exact: true }).click();
+      await bands[1].locator('td').nth(0).getByText('3', { exact: true }).waitFor();
+      await assertBandCounts(bands, [2, 3, 2, 2, 2, 2, 1]);
+      assert.equal((await bands[1].locator('td').nth(2).innerText()).trim(), '2,100');
+      assert.equal((await bands[1].locator('td').nth(1).innerText()).trim(), '21.4%');
+      for (const [index, row] of bands.entries())
+        if (index !== 1)
+          assert.equal((await row.locator('td').nth(2).innerText()).trim(), entryCapital[index]);
+      assert.match(
+        await region.locator('.jubjub-distribution-coverage').innerText(),
+        /14\s*\/\s*14 positions classified/,
+      );
+      assert.match(await region.locator('.jubjub-distribution-summary').innerText(), /333,550 P20/);
+      assert.match(
+        await region.locator('.jubjub-distribution-summary').innerText(),
+        /1 later top-up updates excluded/,
+      );
+      assert.equal(state().funding.length, 0);
+      assert.equal(requests(state(), '/api/jubjub/auth/challenge').length, 0);
+    },
+  );
+
+  await runCase(
+    'grouped public additions stay unclassified instead of being divided across price bands',
+    'analytics',
+    async (page) => {
+      const { region, table, bands } = await distributionRows(page);
+      await assertBandCounts(bands, [1, 0, 0, 0, 1, 0, 0]);
+      const unknown = table.locator('[data-band-id="unknown"]');
+      assert.equal((await unknown.locator('td').nth(0).innerText()).trim(), '6');
+      assert.equal((await unknown.locator('td').nth(1).innerText()).trim(), '75%');
+      assert.equal((await unknown.locator('td').nth(2).innerText()).trim(), '—');
+      assert.match(
+        await region.locator('.jubjub-distribution-coverage').innerText(),
+        /2\s*\/\s*8 positions classified/,
+      );
+      await region.getByText('25% coverage', { exact: true }).waitFor();
+      assert.match(await region.locator('.jubjub-distribution-summary').innerText(), /11,200 P20/);
+      assert.match(
+        await region.locator('.jubjub-distribution-summary').innerText(),
+        /1 later top-up updates excluded/,
+      );
+      assert.equal(await table.locator('tbody tr').count(), 8);
+      await capture(page, 'first-bid-distribution-partial.png');
+    },
+  );
+
+  await runCase(
+    'unavailable first bid history does not pretend all price bands contain zero people',
+    'distribution-error',
+    async (page, state) => {
+      const region = page.getByRole('region', { name: 'First-bid distribution', exact: true });
+      await region
+        .getByRole('status')
+        .filter({ hasText: 'First-bid history is temporarily unavailable.' })
+        .waitFor();
+      assert.equal(await region.getByRole('table', { name: 'First-bid amount bands' }).count(), 0);
+      assert.equal(await region.locator('.jubjub-distribution-coverage').count(), 0);
+      assert.equal(await region.locator('[data-band-id]').count(), 0);
+      assert.ok(requests(state(), '/api/jubjub/history').length > 0);
+      assert.equal(
+        state().publicHistory.at(-1).positions,
+        13,
+        'Unavailable data is distinct from an empty auction',
+      );
+      assert.equal(state().funding.length, 0);
+    },
+  );
+
+  await runCase(
+    'all seven first bid bands and entry amounts fit a mobile viewport',
+    'distribution',
+    async (page) => {
+      const { region, bands } = await distributionRows(page);
+      await assertBandCounts(bands, [2, 2, 2, 2, 2, 2, 1]);
+      await region.scrollIntoViewIfNeeded();
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        true,
+        'Seven amount bands must not overflow a 390px viewport',
+      );
+      await bands[5].getByText('150,000 P20 entered', { exact: true }).waitFor();
+      await bands[6].getByText('100,050 P20 entered', { exact: true }).waitFor();
+      await capture(page, 'first-bid-distribution-mobile.png');
     },
     { width: 390, height: 844 },
   );

@@ -92,14 +92,57 @@ function analyticsHistory(now) {
     qualifyingBidUnits: '100000000',
   }));
 }
+function distributionHistory(now) {
+  const bids = [100, 450, 500, 950, 1000, 4950, 5000, 9950, 10000, 49950, 50000, 100000, 100050];
+  const rows = [
+    {
+      at: now - 7200,
+      sequence: 0,
+      positions: 0,
+      committedUnits: '0',
+      averageBidUnits: '100000000',
+      averageVersion: 2,
+      highestBidUnits: '100000000',
+      qualifyingBidUnits: '100000000',
+    },
+  ];
+  let committed = 0n;
+  for (const [index, bid] of bids.entries()) {
+    const positions = index + 1;
+    committed += BigInt(bid) * 1000000n;
+    rows.push({
+      at: now - 6900 + index * 300,
+      sequence: positions,
+      positions,
+      committedUnits: String(committed),
+      averageBidUnits: String((committed + BigInt(1623 - positions) * 100000000n) / 1623n),
+      averageVersion: 2,
+      highestBidUnits: String(BigInt(bid) * 1000000n),
+      qualifyingBidUnits: '100000000',
+    });
+  }
+  // A 500 P20 increase to an existing position is a transaction, not another
+  // bidder in the 500–1,000 band. Its identity is intentionally not public.
+  const last = rows.at(-1);
+  committed += 500000000n;
+  rows.push({
+    ...last,
+    at: now - 60,
+    sequence: last.sequence + 1,
+    committedUnits: String(committed),
+    averageBidUnits: String((committed + BigInt(1623 - last.positions) * 100000000n) / 1623n),
+  });
+  return rows;
+}
 function createState(scenario) {
   const analytics = scenario === 'analytics';
-  const now = analytics ? analyticsNow : Math.floor(Date.now() / 1000);
+  const distribution = scenario === 'distribution' || scenario === 'distribution-error';
+  const now = analytics || distribution ? analyticsNow : Math.floor(Date.now() / 1000);
   const ended = scenario === 'refund';
   const state = {
     scenario,
     now,
-    config: profile(now, ended, analytics),
+    config: profile(now, ended, analytics || distribution),
     requests: [],
     funding: [],
     intents: ended
@@ -119,8 +162,13 @@ function createState(scenario) {
     confirmedTransactions: ended ? 1 : 0,
     refundsRequested: 0,
     jobs: [],
-    publicHistory: analytics ? analyticsHistory(now) : null,
-    registeredPositions: analytics ? 11 : 1,
+    publicHistory: analytics
+      ? analyticsHistory(now)
+      : distribution
+        ? distributionHistory(now)
+        : null,
+    registeredPositions: analytics ? 11 : distribution ? 13 : 1,
+    historyUnavailable: scenario === 'distribution-error',
   };
   if (analytics) {
     state.intents = [
@@ -181,6 +229,7 @@ function createState(scenario) {
     state.positionVersion = 1;
     state.confirmedTransactions = 10;
   }
+  if (distribution) state.confirmedTransactions = 14;
   return state;
 }
 function summary(state) {
@@ -196,7 +245,9 @@ function summary(state) {
     mergedRoot: null,
     campaignId: state.config.rules.id,
     rulesHash: state.config.rulesHash,
-    bidAttempts: state.publicHistory ? 14 : state.intents.length,
+    bidAttempts: state.publicHistory
+      ? Math.max(14, state.confirmedTransactions)
+      : state.intents.length,
     participationLimit: null,
     registeredPositions: state.registeredPositions,
     bidPaused: false,
@@ -475,6 +526,8 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
                 result = summary(state);
                 break;
               case '/api/jubjub/history': {
+                if (state.historyUnavailable)
+                  throw new Error('Synthetic history service unavailable');
                 const rows =
                   state.publicHistory ??
                   Array.from({ length: 3 }, (_, sequence) => ({
@@ -604,7 +657,11 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
               }
               case '/__jubjub_fixture/public-update':
                 assert.equal(req.method, 'POST');
-                appendPublicChange(state, 1, 450000000n);
+                appendPublicChange(
+                  state,
+                  1,
+                  state.scenario.startsWith('distribution') ? 650000000n : 450000000n,
+                );
                 result = summary(state);
                 break;
               case '/api/jubjub/refund':
@@ -646,5 +703,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     port: Number(process.env.JUBJUB_FIXTURE_PORT ?? 5182),
   });
   console.log(`Synthetic JubJub fixture: ${server.url}/privasea/jubjub`);
-  console.log('Scenarios: ?scenario=flow|refund|reject|network|stale|old|locked|analytics');
+  console.log(
+    'Scenarios: ?scenario=flow|refund|reject|network|stale|old|locked|analytics|distribution|distribution-error|generic-only|legacy|generic-reject',
+  );
 }

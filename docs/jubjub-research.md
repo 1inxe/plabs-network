@@ -47,6 +47,10 @@ Verify `rulesHash` as Keccak-256 of UTF-8 canonical JSON of the entire `rules` o
 
 ## Public API
 
+Distribution audit (2026-10-20): the shipped client still exposes only `/config`, `/summary`, and `/history` as public auction data. Neither summary nor history contains individual position IDs or current per-position bid totals. First-entry payments can be estimated from consecutive snapshots with exactly one added funded position and a valid positive change in committed P20. Grouped additions, missing snapshots, and inconsistent amounts remain unclassified. Later top-ups are excluded from participant counts and never move a historical first bid to another band. Negative adjustments make the distribution unavailable because affected identities cannot be identified.
+
+Even a complete public history cannot determine the current distribution uniquely. For example, initial bids `[100, 400, 500, 1000]` followed by an anonymous 100 P20 increase can become `[100, 500, 500, 1000]` or `[100, 400, 600, 1000]`. Both produce the same public total, count, highest bid and qualifying minimum, but different counts below 500 P20. The UI therefore labels these bands **First-bid distribution**, explicitly describes inference from public snapshots, and shows the source snapshot time and classification coverage.
+
 All paths below are relative to `/nft-jubjub/v1` on the official application origin. Requests use JSON, a 60-second client timeout, and `Authorization: Bearer <token>` only for authenticated operations. A 401 invalidates the cached campaign session. Server errors use `{ "error": "..." }`.
 
 | Request                       | Consumed response                                                                                                                                                                                                                                                                                               |

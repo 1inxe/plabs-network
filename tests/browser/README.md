@@ -44,7 +44,7 @@ and `JUBJUB_BROWSER_PATH` to the browser executable. `JUBJUB_ARTIFACT_DIR` can s
 the screenshot output directory; the default is `plabs-jubjub-browser` inside the
 system temporary directory.
 
-The fourteen cases cover real page interactions with synthetic responses:
+The eighteen cases cover real page interactions with synthetic responses:
 
 1. Reject a 125 P20 total, place a 100 P20 bid, resume the same pending payment
    after a page reload, then raise the total to 150 P20 with a 50 P20 payment.
@@ -69,6 +69,14 @@ The fourteen cases cover real page interactions with synthetic responses:
 12. A wallet exposing only the generic sponsored-transfer capability can submit a bid.
 13. A wallet exposing only the earlier JubJub capability remains compatible.
 14. Rejecting a generic payment never triggers a second attempt through the legacy API.
+15. Thirteen distinct first-entry payments populate all seven amount bands with counts
+    `[2, 2, 2, 2, 2, 2, 1]`. A later 500 P20 increase does not add a participant or
+    change the entry capital. A new 650 P20 participant changes only the second band.
+16. Three public snapshots that each add two positions remain six unclassified
+    positions; only individually identifiable first entries enter the price bands.
+17. A failed history request shows an unavailable state instead of seven zero counts.
+18. All seven bands and their entry amounts remain readable at a 390 px viewport
+    without horizontal overflow.
 
 Every test rejects all requests outside its local fixture origin and checks for
 browser runtime errors. Generic funding calls contain the public protocol, service,
@@ -82,7 +90,7 @@ test schedule. It does not test real proof generation or on-chain confirmation.
 For manual inspection, run `node tests/browser/jubjub-fixture.mjs` and open
 `http://127.0.0.1:5182/privasea/jubjub`. Select another scenario with
 `?scenario=refund`, `reject`, `network`, `stale`, `old`, `locked`, `analytics`,
-`generic-only`, `legacy`, or `generic-reject`. The `stale`
+`generic-only`, `legacy`, `generic-reject`, `distribution`, or `distribution-error`. The `stale`
 scenario holds the signature until the browser console calls
 `window.__jubjubFixture.changeAccount()` followed by
 `window.__jubjubFixture.releaseSignature()`. All pages display a test banner.
@@ -93,5 +101,16 @@ history: 8 funded positions, 10 confirmed bids, and 12,900 P20 committed. Its
 by 4 and 12,300 P20. Call `await window.__jubjubFixture.publishUpdate()` to append
 one public change of 1 position and 450 P20. This remains entirely local.
 
+The `distribution` scenario uses first-entry amounts of 100, 450, 500, 950, 1,000,
+4,950, 5,000, 9,950, 10,000, 49,950, 50,000, 100,000, and 100,050 P20. Their
+combined entry capital is 332,900 P20. A separate 500 P20 increase makes public
+committed capital 333,400 P20 while participant count remains 13. In this scenario,
+`publishUpdate()` adds a new 650 P20 participant. Exactly 100,000 belongs in the
+sixth band; the last band is strictly greater than 100,000. The `distribution-error`
+scenario exposes the same public totals but deliberately fails history requests.
+These distributions estimate first participation from public snapshots, not each
+participant's current bid after later increases.
+
 Screenshots include desktop confirmation, desktop refund, mobile sign-in, live
-analysis, private orders, and mobile analysis with populated orders.
+analysis, private orders, mobile analysis with populated orders, complete/partial
+first-bid distributions, and the seven bands on mobile.

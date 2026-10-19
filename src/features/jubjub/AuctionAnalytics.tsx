@@ -8,6 +8,7 @@ import {
 } from '@/services/platform/jubjub';
 import { Panel } from '@/shared/ui';
 import { deriveAuctionAnalytics, type ParticipationPoint } from './auction-analytics';
+import { BidDistribution } from './BidDistribution';
 
 const windows = [
   { label: '15m', seconds: 900 },
@@ -155,6 +156,7 @@ export function AuctionAnalytics({
           )}
         </p>
       </div>
+      <BidDistribution history={history} summary={summary} error={historyError} />
       <div className="jubjub-analysis-window">
         <div className="jubjub-analysis-toolbar">
           <h3>{rangeLabel}</h3>
