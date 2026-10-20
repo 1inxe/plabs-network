@@ -15,6 +15,9 @@ export type BidDistributionBand = {
   entryUnits: string;
 };
 export type BidDistribution = {
+  firstBids: Array<{ sequence: number; amountUnits: string }>;
+  /** Complete first-entry observations, independent of a newer live summary. */
+  completeFirstBids: boolean;
   bands: BidDistributionBand[];
   classifiedParticipants: number;
   unclassifiedParticipants: number;
@@ -44,6 +47,8 @@ const definitions = [
 const share = (count: number, total: number) => (total > 0 ? (count / total) * 100 : 0);
 function empty(status: BidDistribution['status'], reason: string): BidDistribution {
   return {
+    firstBids: [],
+    completeFirstBids: false,
     bands: [],
     classifiedParticipants: 0,
     unclassifiedParticipants: 0,
@@ -129,6 +134,7 @@ export function deriveBidDistribution({
   let unclassifiedParticipants = first.positions;
   let topUpUpdates = 0;
   let hasGaps = false;
+  const firstBids: BidDistribution['firstBids'] = [];
   const hasBaseline = first.sequence === 0 && first.positions === 0 && first.committedUnits === '0';
   for (let index = 1; index < rows.length; index++) {
     const previous = rows[index - 1];
@@ -168,6 +174,7 @@ export function deriveBidDistribution({
     });
     if (!band) return empty('invalid', 'A first-entry payment falls outside the supported bands.');
     band.count++;
+    firstBids.push({ sequence: current.sequence, amountUnits: String(amount) });
     band.entryUnits = String(BigInt(band.entryUnits) + amount);
     classifiedParticipants++;
   }
@@ -195,6 +202,8 @@ export function deriveBidDistribution({
       'Latest totals have newer changes; this distribution stops at the last history snapshot.',
     );
   return {
+    firstBids,
+    completeFirstBids: hasBaseline && !hasGaps && !history.more && unclassifiedParticipants === 0,
     bands: bands.map((band) => ({ ...band, share: share(band.count, last.positions) })),
     classifiedParticipants,
     unclassifiedParticipants,

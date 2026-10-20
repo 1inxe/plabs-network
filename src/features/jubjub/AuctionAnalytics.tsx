@@ -156,7 +156,12 @@ export function AuctionAnalytics({
           )}
         </p>
       </div>
-      <BidDistribution history={history} summary={summary} error={historyError} />
+      <BidDistribution
+        history={history}
+        summary={summary}
+        seats={config?.rules.auctionSeats}
+        error={historyError}
+      />
       <div className="jubjub-analysis-window">
         <div className="jubjub-analysis-toolbar">
           <h3>{rangeLabel}</h3>

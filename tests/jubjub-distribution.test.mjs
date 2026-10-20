@@ -18,6 +18,7 @@ registerHooks({
   },
 });
 const { deriveBidDistribution } = await import('../src/features/jubjub/bid-distribution.ts');
+const { deriveSeatAllocation } = await import('../src/features/jubjub/seat-allocation.ts');
 const scale = 1000000n;
 const row = (
   sequence,
@@ -317,4 +318,119 @@ test('an aggregate increase above the highest bid stays unknown and a gap is not
   assert.equal(result.bands[0].count, 1);
   assert.equal(result.bands[1].count, 0);
   assert.equal(result.topUpUpdates, 1);
+});
+
+const allocate = (h, seats, extra = {}) =>
+  deriveSeatAllocation({
+    distribution: deriveBidDistribution({ history: h }),
+    seats,
+    ...extra,
+  });
+
+test('seat count retains the highest prices and partitions every band without losing a participant', () => {
+  const model = allocate(entrants([100, 500, 5000, 6000, 7000, 10000, 50000]), 3);
+  assert.equal(model.status, 'ready');
+  assert.equal(model.retainedCount, 3);
+  assert.equal(model.outsideCount, 4);
+  assert.equal(model.cutoffUnits, String(7000n * scale));
+  assert.equal(model.retainedUnits, String(67000n * scale));
+  assert.equal(model.bands[0].id, 'over-100000');
+  assert.equal(model.bands.at(-1).id, '100-500');
+  assert.equal(
+    model.bands.reduce((n, b) => n + b.retained, 0),
+    3,
+  );
+  assert.equal(
+    model.bands.reduce((n, b) => n + b.outside, 0),
+    4,
+  );
+  assert(model.bands.every((b) => b.retained + b.outside === b.count));
+  assert.equal(model.bands.find((b) => b.id === '5000-10000').state, 'mixed');
+  assert.equal(model.bands.find((b) => b.id === '100-500').state, 'outside');
+});
+
+test('equal bids across the seat line expose an unresolved tie rather than inventing individual winners', () => {
+  const model = allocate(entrants([100, 5000, 6000, 6000, 6000, 10000]), 3);
+  assert.equal(model.cutoffUnits, String(6000n * scale));
+  assert.equal(model.contested, true);
+  assert.equal(model.aboveCutoffCount, 1);
+  assert.equal(model.atCutoffCount, 3);
+  assert.equal(model.cutoffSeats, 2);
+  assert.equal(model.belowCutoffCount, 2);
+  assert.equal(model.retainedCount, 3);
+  assert.equal(model.outsideCount, 3);
+  assert.equal(model.retainedBands.find((b) => b.id === 'retained-6000-7000').count, 2);
+  assert.equal(model.retainedUnits, String(22000n * scale));
+});
+
+test('retained 5k–10k amounts are split into 1k ranges and their shares use retained slots', () => {
+  const model = allocate(entrants([5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500]), 4);
+  assert.equal(model.cutoffUnits, String(8000n * scale));
+  assert.deepEqual(
+    model.retainedBands.map((b) => [b.label, b.count, b.share]),
+    [
+      ['9,000–<10,000', 2, 50],
+      ['8,000–<9,000', 2, 50],
+    ],
+  );
+  assert.equal(model.bands.find((b) => b.id === '5000-10000').retained, 4);
+  assert.equal(model.bands.find((b) => b.id === '5000-10000').outside, 6);
+  const cropped = allocate(entrants([5000, 5450, 5500, 10000]), 3);
+  assert.equal(cropped.retainedBands.at(-1).label, '5,450–<6,000');
+  assert.equal(cropped.retainedBands.at(-1).atCutoff, true);
+});
+
+test('unused seats and an empty auction never manufacture eliminated positions or a tie', () => {
+  const model = allocate(entrants([100, 500, 1000]), 10);
+  assert.equal(model.retainedCount, 3);
+  assert.equal(model.outsideCount, 0);
+  assert.equal(model.openSeats, 7);
+  assert.equal(model.contested, false);
+  const empty = allocate(entrants([]), 1623);
+  assert.equal(empty.status, 'ready');
+  assert.equal(empty.cutoffUnits, null);
+  assert.equal(empty.openSeats, 1623);
+  assert.deepEqual(empty.retainedBands, []);
+});
+
+test('seat models fail closed for incomplete/unclassified history and invalid or conflicting capacity', () => {
+  const h = entrants([100, 500, 1000]);
+  for (const seats of [undefined, 0, -1, 1.5, Infinity, 100001])
+    assert.equal(allocate(h, seats).status, 'unavailable');
+  assert.equal(allocate(h, 2, { summarySeats: 3 }).status, 'unavailable');
+  assert.equal(allocate({ ...h, more: true }, 2).status, 'unavailable');
+  assert.equal(
+    allocate(history([row(0, 0, 0), row(1, 2, 1000n * scale)]), 2).status,
+    'unavailable',
+  );
+  assert.equal(allocate(history([h.rows[0], h.rows[2], h.rows[3]]), 2).status, 'unavailable');
+});
+
+test('anonymous top-ups and newer live totals do not move inferred people or alter the seat model', () => {
+  const h = entrants([100, 400, 500, 1000]);
+  const before = allocate(h, 2);
+  h.rows.push(row(5, 4, 2100n * scale, 105, 1000n * scale));
+  const data = deriveBidDistribution({
+    history: h,
+    summary: summaryFor(h, { positions: 5, committedUnits: '2300000000', serverTime: 110 }),
+  });
+  assert.equal(data.summaryAhead, true);
+  assert.equal(data.completeFirstBids, true);
+  const after = deriveSeatAllocation({ distribution: data, seats: 2 });
+  assert.equal(after.status, 'ready');
+  assert.equal(after.retainedUnits, before.retainedUnits);
+  assert.equal(after.cutoffUnits, before.cutoffUnits);
+  assert.equal(data.topUpUpdates, 1);
+});
+
+test('ranking and retained capital preserve large exact integers and the inclusive 100000 boundary', () => {
+  const large = 10n ** 25n;
+  const model = allocate(entrants([100, 100000, large]), 2);
+  assert.equal(model.retainedUnits, String((large + 100000n) * scale));
+  assert.equal(model.retainedBands[0].label, '>100,000');
+  assert.equal(model.retainedBands[1].label, '100,000');
+  assert.equal(
+    model.retainedBands.reduce((sum, b) => sum + b.share, 0),
+    100,
+  );
 });
