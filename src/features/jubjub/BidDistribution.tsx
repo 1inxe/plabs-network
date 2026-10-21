@@ -27,7 +27,7 @@ export function BidDistribution({
   error?: boolean;
 }) {
   const methodId = useId();
-  const [modelExpanded, setModelExpanded] = useState(false);
+  const [modelExpanded, setModelExpanded] = useState(true);
   const data = useMemo(
     () => deriveBidDistribution({ history: error ? undefined : history, summary }),
     [history, summary, error],
@@ -61,6 +61,7 @@ export function BidDistribution({
         <>
           <details
             className="jubjub-first-bid-model"
+            open={modelExpanded}
             onToggle={(event) => setModelExpanded(event.currentTarget.open)}
           >
             <summary>Explore seat model using first bids only</summary>

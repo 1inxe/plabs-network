@@ -709,10 +709,24 @@ try {
           /500 P20 across 1 observed top-up updates/,
         );
       }
-      assert.equal(await region.locator('details').evaluate((node) => node.open), false);
+      assert.equal(await region.locator('details').evaluate((node) => node.open), true);
+      await region.locator('.jubjub-seat-overview').waitFor();
+      await region.getByRole('region', { name: 'Estimated retained bids by range' }).waitFor();
+      assert.match(
+        await region.locator('.jubjub-seat-cutoff').innerText(),
+        /Modeled seat line\s+100 P20/,
+      );
+      assert.match(
+        await region.locator('.jubjub-seat-cutoff').innerText(),
+        /Live qualifying\s+100 P20/,
+      );
+      assert.match(await region.locator('.jubjub-retained-band').last().innerText(), /100–<500/);
+      assert.equal(await table.getByRole('columnheader', { name: /Retained/ }).isVisible(), true);
+      assert.equal(await table.getByRole('columnheader', { name: /Out/ }).isVisible(), true);
+      await region.locator('summary').click();
+      await table.getByRole('columnheader', { name: /Retained/ }).waitFor({ state: 'detached' });
       await region.locator('summary').click();
       await region.locator('.jubjub-seat-overview').waitFor();
-      await region.locator('summary').click();
       assert.match(await region.locator('.jubjub-distribution-summary').innerText(), /332,900 P20/);
       assert.match(
         await region.locator('.jubjub-distribution-summary').innerText(),
