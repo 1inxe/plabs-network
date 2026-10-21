@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { formatP20, type JubjubHistory, type JubjubSummary } from '@/services/platform/jubjub';
 import { deriveBidDistribution } from './bid-distribution';
 import { deriveSeatAllocation, type SeatAllocation } from './seat-allocation';
@@ -27,6 +27,7 @@ export function BidDistribution({
   error?: boolean;
 }) {
   const methodId = useId();
+  const [modelExpanded, setModelExpanded] = useState(false);
   const data = useMemo(
     () => deriveBidDistribution({ history: error ? undefined : history, summary }),
     [history, summary, error],
@@ -46,8 +47,8 @@ export function BidDistribution({
     >
       <div className="jubjub-analysis-toolbar">
         <div>
-          <span className="eyebrow">HIGHEST BIDS FIRST</span>
-          <h3>Seat allocation estimate</h3>
+          <span className="eyebrow">HISTORICAL FIRST BIDS</span>
+          <h3>First-bid distribution</h3>
         </div>
         <span className="jubjub-distribution-unit">P20</span>
       </div>
@@ -58,53 +59,67 @@ export function BidDistribution({
       </p>
       {available ? (
         <>
-          {allocated ? (
-            <SeatOverview
-              allocation={allocation}
-              participants={data.historyParticipants ?? 0}
-              liveCutoff={summary && !summary.unavailable ? summary.qualifyingBidUnits : undefined}
-            />
-          ) : (
-            <div className="jubjub-seat-unavailable" role="status">
-              {allocation.reason}
-            </div>
-          )}
-          {allocated && allocation.retainedBands.length > 0 && (
-            <section className="jubjub-retained" aria-label="Estimated retained bids by range">
-              <div className="jubjub-analysis-toolbar">
-                <h4>Retained bids by range</h4>
-                <span>{allocation.retainedCount.toLocaleString()} estimated seat slots</span>
+          <details
+            className="jubjub-first-bid-model"
+            onToggle={(event) => setModelExpanded(event.currentTarget.open)}
+          >
+            <summary>Explore seat model using first bids only</summary>
+            <p className="jubjub-topup-warning">
+              This model excludes later increases and cannot determine current retained or out
+              positions. Use the official live qualifying bid above for the current seat threshold.
+            </p>
+            {allocated ? (
+              <SeatOverview
+                allocation={allocation}
+                participants={data.historyParticipants ?? 0}
+                liveCutoff={
+                  summary && !summary.unavailable ? summary.qualifyingBidUnits : undefined
+                }
+              />
+            ) : (
+              <div className="jubjub-seat-unavailable" role="status">
+                {allocation.reason}
               </div>
-              <p>
-                5,000–10,000 P20 is split into 1,000 P20 ranges. Shares use retained slots only.
-              </p>
-              <div className="jubjub-retained-grid">
-                {allocation.retainedBands.map((band) => (
-                  <div
-                    key={band.id}
-                    className={`jubjub-retained-band ${band.atCutoff ? 'is-cutoff' : ''}`}
-                    data-retained-band={band.id}
-                  >
-                    <div className="jubjub-retained-row">
-                      <span>
-                        {band.label} <small>P20</small>
-                      </span>
-                      <strong>
-                        {band.count.toLocaleString()} <small>{percent(band.share)}</small>
-                      </strong>
+            )}
+            {allocated && allocation.retainedBands.length > 0 && (
+              <section className="jubjub-retained" aria-label="Estimated retained bids by range">
+                <div className="jubjub-analysis-toolbar">
+                  <h4>Retained bids by range</h4>
+                  <span>{allocation.retainedCount.toLocaleString()} estimated seat slots</span>
+                </div>
+                <p>
+                  5,000–10,000 P20 is split into 1,000 P20 ranges. Shares use retained slots only.
+                </p>
+                <div className="jubjub-retained-grid">
+                  {allocation.retainedBands.map((band) => (
+                    <div
+                      key={band.id}
+                      className={`jubjub-retained-band ${band.atCutoff ? 'is-cutoff' : ''}`}
+                      data-retained-band={band.id}
+                    >
+                      <div className="jubjub-retained-row">
+                        <span>
+                          {band.label} <small>P20</small>
+                        </span>
+                        <strong>
+                          {band.count.toLocaleString()} <small>{percent(band.share)}</small>
+                        </strong>
+                      </div>
+                      <div className="jubjub-retained-track" aria-hidden="true">
+                        <span style={{ width: `${band.share}%` }} />
+                      </div>
+                      <div className="jubjub-retained-foot">
+                        <span>
+                          {formatP20(band.units, { maximumFractionDigits: 2 })} P20 initial
+                        </span>
+                        {band.atCutoff && <span>Cutoff range</span>}
+                      </div>
                     </div>
-                    <div className="jubjub-retained-track" aria-hidden="true">
-                      <span style={{ width: `${band.share}%` }} />
-                    </div>
-                    <div className="jubjub-retained-foot">
-                      <span>{formatP20(band.units, { maximumFractionDigits: 2 })} P20 initial</span>
-                      {band.atCutoff && <span>Cutoff range</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+                  ))}
+                </div>
+              </section>
+            )}
+          </details>
           <div className="jubjub-analysis-toolbar jubjub-all-bands-heading">
             <h4>All price bands</h4>
             <span>Highest → lowest</span>
@@ -128,12 +143,16 @@ export function BidDistribution({
                   <th scope="col" className="jubjub-distribution-capital">
                     Initial P20
                   </th>
-                  <th scope="col" className="jubjub-seat-in">
-                    Retained <small>estimate</small>
-                  </th>
-                  <th scope="col" className="jubjub-seat-out">
-                    Out <small>estimate</small>
-                  </th>
+                  {modelExpanded && (
+                    <>
+                      <th scope="col" className="jubjub-seat-in">
+                        Retained <small>first-bid model</small>
+                      </th>
+                      <th scope="col" className="jubjub-seat-out">
+                        Out <small>first-bid model</small>
+                      </th>
+                    </>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -143,11 +162,11 @@ export function BidDistribution({
                     <tr
                       key={band.id}
                       data-band-id={band.id}
-                      data-seat-state={seatBand?.state ?? 'unknown'}
+                      data-seat-state={modelExpanded ? (seatBand?.state ?? 'unknown') : 'unknown'}
                     >
                       <th scope="row">
                         {band.label}
-                        {seatBand?.state === 'mixed' && (
+                        {modelExpanded && seatBand?.state === 'mixed' && (
                           <span className="jubjub-band-cutoff">Seat line crosses this range</span>
                         )}
                         <small className="jubjub-distribution-mobile-capital">
@@ -171,12 +190,16 @@ export function BidDistribution({
                       >
                         {formatP20(band.entryUnits, { maximumFractionDigits: 2 })}
                       </td>
-                      <td className="jubjub-seat-in">
-                        {seatBand ? seatBand.retained.toLocaleString() : '—'}
-                      </td>
-                      <td className="jubjub-seat-out">
-                        {seatBand ? seatBand.outside.toLocaleString() : '—'}
-                      </td>
+                      {modelExpanded && (
+                        <>
+                          <td className="jubjub-seat-in">
+                            {seatBand ? seatBand.retained.toLocaleString() : '—'}
+                          </td>
+                          <td className="jubjub-seat-out">
+                            {seatBand ? seatBand.outside.toLocaleString() : '—'}
+                          </td>
+                        </>
+                      )}
                     </tr>
                   );
                 })}
@@ -192,8 +215,12 @@ export function BidDistribution({
                       {percent(data.unclassifiedShare)}
                     </td>
                     <td className="jubjub-distribution-capital">—</td>
-                    <td>—</td>
-                    <td>—</td>
+                    {modelExpanded && (
+                      <>
+                        <td>—</td>
+                        <td>—</td>
+                      </>
+                    )}
                   </tr>
                 )}
               </tbody>

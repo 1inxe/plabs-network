@@ -671,6 +671,48 @@ try {
         /13\s*\/\s*13 positions classified/,
       );
       await region.getByText('100% coverage', { exact: true }).waitFor();
+      const topups = page.getByRole('region', { name: 'Additional bid funds', exact: true });
+      await topups.locator('.jubjub-topup-totals').waitFor();
+      assert.equal(
+        await topups
+          .getByText('Observed top-up P20', { exact: true })
+          .locator('..')
+          .locator('strong')
+          .innerText(),
+        '500',
+      );
+      assert.equal(
+        await topups
+          .getByText('Top-up updates', { exact: true })
+          .locator('..')
+          .locator('strong')
+          .innerText(),
+        '1',
+      );
+      assert.match(
+        await topups.locator('[data-topup-reconciliation]').innerText(),
+        /332,900 first bids \+ 500 top-ups \+ 0 unattributed = 333,400 P20/,
+      );
+      assert.deepEqual(
+        await topups.locator('[data-topup-band="500"]').locator('td').allTextContents(),
+        ['1', '500'],
+      );
+      const periods = topups.getByRole('group', { name: 'Top-up analysis period' });
+      for (const name of ['15m', '1h', 'All']) {
+        await periods.getByRole('button', { name, exact: true }).click();
+        assert.equal(
+          await periods.getByRole('button', { name, exact: true }).getAttribute('aria-pressed'),
+          'true',
+        );
+        assert.match(
+          await topups.locator('[data-topup-period-total]').innerText(),
+          /500 P20 across 1 observed top-up updates/,
+        );
+      }
+      assert.equal(await region.locator('details').evaluate((node) => node.open), false);
+      await region.locator('summary').click();
+      await region.locator('.jubjub-seat-overview').waitFor();
+      await region.locator('summary').click();
       assert.match(await region.locator('.jubjub-distribution-summary').innerText(), /332,900 P20/);
       assert.match(
         await region.locator('.jubjub-distribution-summary').innerText(),
@@ -738,6 +780,15 @@ try {
         /1 later top-up updates excluded/,
       );
       assert.equal(await table.locator('tbody tr').count(), 8);
+      const topups = page.getByRole('region', { name: 'Additional bid funds', exact: true });
+      assert.match(
+        await topups.locator('[data-topup-reconciliation]').innerText(),
+        /11,200 first bids \+ 300 top-ups \+ 1,400 unattributed = 12,900 P20/,
+      );
+      assert.match(
+        await topups.getByRole('status').innerText(),
+        /additional top-ups may be missing/,
+      );
       await capture(page, 'first-bid-distribution-partial.png');
     },
   );
@@ -754,6 +805,12 @@ try {
       assert.equal(await region.getByRole('table', { name: 'First-bid amount bands' }).count(), 0);
       assert.equal(await region.locator('.jubjub-distribution-coverage').count(), 0);
       assert.equal(await region.locator('[data-band-id]').count(), 0);
+      const topups = page.getByRole('region', { name: 'Additional bid funds', exact: true });
+      await topups
+        .getByText('Top-up history is temporarily unavailable.', { exact: true })
+        .waitFor();
+      assert.equal(await topups.locator('.jubjub-topup-totals').count(), 0);
+      assert.equal(await topups.locator('[data-topup-band]').count(), 0);
       assert.ok(requests(state(), '/api/jubjub/history').length > 0);
       assert.equal(
         state().publicHistory.at(-1).positions,
@@ -778,6 +835,13 @@ try {
       );
       await bands[5].getByText('150,000 P20 entered', { exact: true }).waitFor();
       await bands[6].getByText('100,050 P20 entered', { exact: true }).waitFor();
+      const topups = page.getByRole('region', { name: 'Additional bid funds', exact: true });
+      await topups.scrollIntoViewIfNeeded();
+      assert.equal(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+        true,
+        'Top-up bands fit a 390px viewport',
+      );
       await capture(page, 'first-bid-distribution-mobile.png');
     },
     { width: 390, height: 844 },

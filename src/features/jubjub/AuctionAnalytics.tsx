@@ -9,6 +9,7 @@ import {
 import { Panel } from '@/shared/ui';
 import { deriveAuctionAnalytics, type ParticipationPoint } from './auction-analytics';
 import { BidDistribution } from './BidDistribution';
+import { TopUpAnalysis } from './TopUpAnalysis';
 
 const windows = [
   { label: '15m', seconds: 900 },
@@ -156,6 +157,7 @@ export function AuctionAnalytics({
           )}
         </p>
       </div>
+      <TopUpAnalysis history={history} summary={summary} now={now} error={historyError} />
       <BidDistribution
         history={history}
         summary={summary}

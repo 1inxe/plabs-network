@@ -23,6 +23,11 @@ export type BidDistribution = {
   unclassifiedParticipants: number;
   historyParticipants: number | null;
   topUpUpdates: number;
+  topUps: Array<{ sequence: number; at: number; amountUnits: string }>;
+  topUpUnits: string;
+  committedUnits: string | null;
+  /** Includes the initial baseline and changes that cannot be separated reliably. */
+  unattributedUnits: string | null;
   asOf: number | null;
   status: 'ready' | 'partial' | 'missing' | 'mismatch' | 'invalid' | 'adjusted';
   reason: string | null;
@@ -54,6 +59,10 @@ function empty(status: BidDistribution['status'], reason: string): BidDistributi
     unclassifiedParticipants: 0,
     historyParticipants: null,
     topUpUpdates: 0,
+    topUps: [],
+    topUpUnits: '0',
+    committedUnits: null,
+    unattributedUnits: null,
     asOf: null,
     status,
     reason,
@@ -133,6 +142,8 @@ export function deriveBidDistribution({
   let classifiedParticipants = 0;
   let unclassifiedParticipants = first.positions;
   let topUpUpdates = 0;
+  let topUpUnits = 0n;
+  const topUps: BidDistribution['topUps'] = [];
   let hasGaps = false;
   const firstBids: BidDistribution['firstBids'] = [];
   const hasBaseline = first.sequence === 0 && first.positions === 0 && first.committedUnits === '0';
@@ -152,7 +163,11 @@ export function deriveBidDistribution({
     const gap = current.sequence !== previous.sequence + 1;
     hasGaps ||= gap;
     if (participants === 0) {
-      if (!gap && amount > 0n) topUpUpdates++;
+      if (!gap && amount >= step && amount % step === 0n && current.positions > 0) {
+        topUpUpdates++;
+        topUpUnits += amount;
+        topUps.push({ sequence: current.sequence, at: current.at, amountUnits: String(amount) });
+      }
       continue;
     }
     if (
@@ -190,6 +205,10 @@ export function deriveBidDistribution({
     (summary.positions !== last.positions || summary.committedUnits !== last.committedUnits)
   );
   const reasons = [];
+  const unattributedUnits =
+    BigInt(last.committedUnits) -
+    topUpUnits -
+    bands.reduce((sum, band) => sum + BigInt(band.entryUnits), 0n);
   if (history.more) reasons.push('Only part of the published history has been loaded.');
   if (!hasBaseline)
     reasons.push('The initial zero baseline is missing; pre-existing positions remain unknown.');
@@ -197,6 +216,8 @@ export function deriveBidDistribution({
     reasons.push('History has sequence gaps; additions across those gaps remain unknown.');
   if (unclassifiedParticipants > 0)
     reasons.push('Some first-entry amounts cannot be assigned to a band.');
+  if (unattributedUnits > 0n)
+    reasons.push('Some committed funds cannot be attributed to first bids or top-ups.');
   if (summaryAhead)
     reasons.push(
       'Latest totals have newer changes; this distribution stops at the last history snapshot.',
@@ -209,6 +230,10 @@ export function deriveBidDistribution({
     unclassifiedParticipants,
     historyParticipants: last.positions,
     topUpUpdates,
+    topUps,
+    topUpUnits: String(topUpUnits),
+    committedUnits: last.committedUnits,
+    unattributedUnits: String(unattributedUnits),
     asOf: last.at,
     status: reasons.length ? 'partial' : 'ready',
     reason: reasons.length ? reasons.join(' ') : null,

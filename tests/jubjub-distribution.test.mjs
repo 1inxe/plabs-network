@@ -19,6 +19,7 @@ registerHooks({
 });
 const { deriveBidDistribution } = await import('../src/features/jubjub/bid-distribution.ts');
 const { deriveSeatAllocation } = await import('../src/features/jubjub/seat-allocation.ts');
+const { deriveTopUpPeriod, topUpShare } = await import('../src/features/jubjub/top-up-analysis.ts');
 const scale = 1000000n;
 const row = (
   sequence,
@@ -110,6 +111,103 @@ test('a first payment of 400 followed by 100 more remains one initial participan
   assert.equal(result.classifiedParticipants, 1);
   assert.equal(result.historyParticipants, 1);
   assert.equal(result.topUpUpdates, 1);
+  assert.equal(result.topUpUnits, String(100n * scale));
+  assert.equal(result.unattributedUnits, '0');
+  assert.equal(result.committedUnits, String(500n * scale));
+  assert.equal(topUpShare(result), 20);
+});
+
+test('repeated increases count updates, preserve first bids and reconcile every committed unit', () => {
+  const result = deriveBidDistribution({
+    history: history([
+      row(0, 0, 0n),
+      row(1, 1, 400n * scale),
+      row(2, 1, 500n * scale),
+      row(3, 1, 1000n * scale),
+      row(4, 2, 1200n * scale),
+      row(5, 2, 2200n * scale),
+    ]),
+  });
+  assert.equal(result.topUpUpdates, 3);
+  assert.equal(result.topUpUnits, String(1600n * scale));
+  assert.equal(result.classifiedParticipants, 2);
+  assert.equal(result.bands[0].count, 2);
+  assert.equal(result.unattributedUnits, '0');
+  assert.equal(
+    BigInt(result.topUpUnits) + result.bands.reduce((sum, b) => sum + BigInt(b.entryUnits), 0n),
+    BigInt(result.committedUnits),
+  );
+  assert.equal(topUpShare(result), 72.7);
+});
+
+test('missing baseline, gaps, grouped additions and malformed increases stay unattributed', () => {
+  const result = deriveBidDistribution({
+    history: history([
+      row(4, 1, 400n * scale),
+      row(6, 1, 900n * scale),
+      row(7, 3, 1900n * scale),
+      row(8, 3, 1900n * scale + 1n),
+      row(9, 3, 2000n * scale + 1n),
+    ]),
+  });
+  assert.equal(result.topUpUpdates, 1);
+  assert.equal(result.topUpUnits, String(100n * scale));
+  assert.equal(result.unattributedUnits, String(1900n * scale + 1n));
+  assert.equal(result.status, 'partial');
+  assert.equal(result.classifiedParticipants, 0);
+  const emptyPosition = deriveBidDistribution({
+    history: history([row(0, 0, 0), row(1, 0, 50n * scale)]),
+  });
+  assert.equal(emptyPosition.topUpUpdates, 0);
+  assert.equal(emptyPosition.unattributedUnits, String(50n * scale));
+});
+
+test('top-up periods use exclusive start, inclusive end and exclude future records', () => {
+  const result = deriveBidDistribution({
+    history: history([
+      row(0, 0, 0, 100),
+      row(1, 1, 100n * scale, 200),
+      row(2, 1, 150n * scale, 700),
+      row(3, 1, 650n * scale, 701),
+      row(4, 1, 1650n * scale, 1000),
+      row(5, 1, 6650n * scale, 1001),
+    ]),
+  });
+  const period = deriveTopUpPeriod(result, 1000, 300);
+  assert.equal(period.updates, 2);
+  assert.equal(period.totalUnits, String(1500n * scale));
+  assert.deepEqual(
+    period.bands.map((b) => b.updates),
+    [0, 1, 1, 0, 0, 0],
+  );
+  assert.equal(deriveTopUpPeriod(result, 1000, null).updates, 3);
+});
+
+test('top-up bands cover all valid sizes, include lower boundaries, and reconcile without float loss', () => {
+  let total = 100n * scale;
+  const amounts = [50n, 450n, 500n, 1000n, 5000n, 10000n, 50000n, 100000000000000000000n];
+  const result = deriveBidDistribution({
+    history: history([
+      row(0, 0, 0n),
+      row(1, 1, total),
+      ...amounts.map((value, index) => {
+        total += value * scale;
+        return row(index + 2, 1, total);
+      }),
+    ]),
+  });
+  const period = deriveTopUpPeriod(result, 1000, null);
+  assert.deepEqual(
+    period.bands.map((b) => b.updates),
+    [2, 1, 1, 1, 1, 2],
+  );
+  assert.equal(
+    period.bands.reduce((sum, b) => sum + BigInt(b.units), 0n),
+    BigInt(result.topUpUnits),
+  );
+  assert.equal(period.totalUnits, result.topUpUnits);
+  assert.equal(topUpShare(deriveBidDistribution({ history: entrants([]) })), null);
+  assert.equal(topUpShare(deriveBidDistribution({})), null);
 });
 
 test('multiple added positions remain unknown rather than splitting their combined payment', () => {
