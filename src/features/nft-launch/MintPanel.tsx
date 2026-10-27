@@ -3,7 +3,10 @@ import { ExternalLink, Gem } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useWallet } from '@/features/wallet';
+import { createNftLaunchService } from '@/services/platform/nft-launch';
 import { errorMessage } from '@/shared/api/errors';
+import { apiEndpoints } from '@/shared/config/env';
+import { type AutoMintProgress, runAutoMint } from './auto-mint';
 import { useNftWalletCapabilities } from './useNftWalletCapabilities';
 
 export const mintSchema = z.object({
@@ -33,6 +36,7 @@ const stages: Record<string, string> = {
   proving: 'Generating your private NFT proof',
   permit: 'Preparing the mint permit',
   approval: 'Confirm the transaction in PLabs Wallet',
+  'permit-expired': 'Mint permit expired · resume to renew',
   confirming: 'Waiting for Ethereum confirmation',
   confirmed: 'Mint confirmed',
   reverted: 'Transaction reverted',
@@ -74,12 +78,15 @@ function MintForm({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
     [latest, setLatest] = useState<Mint | null>(null);
+  const [auto, setAuto] = useState<(AutoMintProgress & { running: boolean }) | null>(null);
+  const autoRequest = useRef<AbortController | null>(null);
   const active = useRef(true),
     submitting = useRef(false);
   useEffect(() => {
     active.current = true;
     return () => {
       active.current = false;
+      autoRequest.current?.abort();
     };
   }, []);
   const liveCapabilities = useNftWalletCapabilities();
@@ -112,39 +119,61 @@ function MintForm({
     latest && (!rows[0] || latest.createdAt >= rows[0].createdAt)
       ? (rows.find((row) => row.id === latest.id) ?? latest)
       : rows[0];
+  const lastGuardAt = useRef(0);
+  const guard = async () => {
+    if (!active.current || !wallet.wallet)
+      throw new Error('Auto mint stopped because the wallet changed.');
+    // Context-keyed unmounts abort immediately; cache silent reads while polling
+    // to stay below the extension bridge rate limit. Every write checks afresh.
+    if (Date.now() - lastGuardAt.current < 5000) return;
+    const session = await wallet.wallet.session();
+    if (
+      session.accounts[0]?.toLowerCase() !== wallet.account.toLowerCase() ||
+      session.chainId !== 1 ||
+      !session.capabilities.methods.nftMinting ||
+      session.privacy?.address !== wallet.privacyAddress
+    )
+      throw new Error('Your wallet changed. Reconnect before continuing mint.');
+    lastGuardAt.current = Date.now();
+  };
+  const requestMint = async (id?: string, signal?: AbortSignal) => {
+    if (!wallet.wallet) throw new Error('Connect PLabs Wallet to mint.');
+    const session = await wallet.wallet.session();
+    if (
+      session.accounts[0]?.toLowerCase() !== wallet.account.toLowerCase() ||
+      session.chainId !== 1 ||
+      !session.capabilities.methods.nftMinting ||
+      session.privacy?.address !== wallet.privacyAddress
+    )
+      throw new Error('Your wallet changed. Refresh and retry with your original privacy wallet.');
+    lastGuardAt.current = Date.now();
+    signal?.throwIfAborted();
+    const value = id
+      ? await wallet.wallet.resumeNftMint?.(id)
+      : await wallet.wallet.mintNft?.({ chainId: 1, poolAddress: pool });
+    const parsed = mintSchema.safeParse(value);
+    if (!parsed.success)
+      throw new Error(
+        'Your wallet returned an unreadable mint status. Check the original request in PLabs Wallet.',
+      );
+    const result = parsed.data;
+    if (result.poolAddress !== pool || (id && result.id !== id))
+      throw new Error('The mint response belongs to another request.');
+    if (active.current) {
+      setLatest(result);
+      onChanged();
+      await mints.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['nft', 'pool', pool] });
+    }
+    return result;
+  };
   const start = async (id?: string) => {
     if (submitting.current || !wallet.wallet) return;
     submitting.current = true;
     setBusy(true);
     setError('');
     try {
-      const session = await wallet.wallet.session();
-      if (
-        session.accounts[0]?.toLowerCase() !== wallet.account.toLowerCase() ||
-        session.chainId !== 1 ||
-        !session.capabilities.methods.nftMinting ||
-        session.privacy?.address !== wallet.privacyAddress
-      )
-        throw new Error(
-          'Your wallet changed. Refresh and retry with your original privacy wallet.',
-        );
-      const value = id
-        ? await wallet.wallet.resumeNftMint?.(id)
-        : await wallet.wallet.mintNft?.({ chainId: 1, poolAddress: pool });
-      const parsed = mintSchema.safeParse(value);
-      if (!parsed.success)
-        throw new Error(
-          'Your wallet returned an unreadable mint status. Check the original request in PLabs Wallet.',
-        );
-      const result = parsed.data;
-      if (result.poolAddress !== pool || (id && result.id !== id))
-        throw new Error('The mint response belongs to another request.');
-      if (active.current) {
-        setLatest(result);
-        onChanged();
-        await mints.refetch();
-        void queryClient.invalidateQueries({ queryKey: ['nft', 'pool', pool] });
-      }
+      await requestMint(id);
     } catch (cause) {
       if (active.current) {
         setError(errorMessage(cause));
@@ -154,6 +183,71 @@ function MintForm({
       submitting.current = false;
       if (active.current) setBusy(false);
     }
+  };
+  const startAuto = async () => {
+    if (submitting.current || !wallet.wallet) return;
+    const adapter = wallet.wallet;
+    const controller = new AbortController();
+    autoRequest.current = controller;
+    submitting.current = true;
+    setBusy(true);
+    setError('');
+    setAuto({
+      running: true,
+      completed: 0,
+      total: 0,
+      message: 'Checking remaining mint allocation…',
+    });
+    try {
+      await runAutoMint({
+        pool,
+        signal: controller.signal,
+        guard,
+        allocation: () =>
+          createNftLaunchService(apiEndpoints.nft).checkAllocation({
+            pool,
+            wallet: adapter,
+            account: wallet.account,
+            signal: controller.signal,
+          }),
+        read: async () => z.array(mintSchema).parse(await wallet.wallet?.nftMints?.()),
+        submit: (id) => requestMint(id, controller.signal),
+        progress: (value) => {
+          if (active.current) setAuto({ ...value, running: true });
+        },
+        minted: (value) => {
+          if (active.current) {
+            setLatest(value);
+            if (value.state === 'confirmed') {
+              onChanged();
+              void queryClient.invalidateQueries({ queryKey: ['nft', 'pool', pool] });
+            }
+          }
+        },
+      });
+    } catch (cause) {
+      if (active.current) {
+        const message = controller.signal.aborted
+          ? 'Auto mint paused. Any submitted transaction will keep confirming.'
+          : errorMessage(cause);
+        setAuto((value) => (value ? { ...value, message } : null));
+        if (!controller.signal.aborted) setError(message);
+      }
+    } finally {
+      submitting.current = false;
+      autoRequest.current = null;
+      if (active.current) {
+        setBusy(false);
+        setAuto((value) => (value ? { ...value, running: false } : null));
+        void mints.refetch();
+      }
+    }
+  };
+  const pauseAuto = () => {
+    autoRequest.current?.abort();
+    setAuto((value) =>
+      value ? { ...value, message: 'Pausing after the current wallet request…' } : null,
+    );
   };
   const action = async () => {
     if (!wallet.account) {
@@ -233,6 +327,32 @@ function MintForm({
                       ? 'Mint unavailable'
                       : 'Mint NFT'}
         </button>
+      )}
+      {enabled && (canMint || pending) && (
+        <div className="nft-auto-mint">
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={!auto?.running && (busy || wallet.busy || mints.isPending || mints.isError)}
+            onClick={() => (auto?.running ? pauseAuto() : void startAuto())}
+          >
+            {auto?.running ? 'Pause auto mint' : 'Auto mint remaining'}
+          </button>
+          <p className="muted-text">
+            Automatically requests the next NFT after confirmation. Confirm each transaction and its
+            ETH gas fee in your wallet.
+          </p>
+        </div>
+      )}
+      {auto && (
+        <div className="nft-allocation-result" role="status">
+          <strong>{auto.message}</strong>
+          {auto.total > 0 && (
+            <span>
+              {auto.completed} / {auto.total} confirmed
+            </span>
+          )}
+        </div>
       )}
       {enabled && mints.isError && (
         <div role="alert">

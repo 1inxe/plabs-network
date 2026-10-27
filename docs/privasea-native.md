@@ -52,3 +52,9 @@ The production Vercel rewrite supplies both `route=pool/:pool` and a redundant n
 A long-running local Vite process was observed serving an older optimized SDK without `proveOwnership`, even though the installed package was 0.3.1. The native ESM SDK is now excluded from dependency prebundling, and each browser fixture uses its own dependency cache. `node tests/browser/sdk-runtime-regression.mjs` probes the adapter served by the currently running dev process with a synthetic provider; it checks ownership, mint, recovery and holdings methods without signing or sending a real transaction.
 
 Wallet 0.8.2 identifies its running build in the public capability response. Unsupported wallets receive a link to the extension release; the actual extension must be reloaded by the browser before its new methods become available.
+
+## Continuous mint queue
+
+**Auto mint remaining** starts a bounded run using the current verified personal allocation. An existing pending reservation is resumed first and counts inside that allowance. Each NFT remains a separate Ethereum transaction with wallet confirmation of its gas; the queue waits for confirmation before requesting the next mint. It stops on rejection, context changes, missing/changed hashes or other failures. Pause stops subsequent requests; an already-approved transaction keeps confirming. Reloading the page never restarts writes automatically.
+
+The deployed market and original application expose individual mint calls; a single atomic batch transaction is not implemented. The wallet obtains short-lived mint permits after its contract reads, classifies expired permits explicitly and preserves the original reservation and proof. Auto mint can renew the same expired permit once; it does not create another reservation to replace an uncertain transaction.

@@ -719,3 +719,11 @@
 .nft-wallet-support .secondary-button {
   width: 100%;
 }
+
+.nft-auto-mint {
+  display: grid;
+  gap: 10px;
+}
+.nft-auto-mint > button {
+  width: 100%;
+}

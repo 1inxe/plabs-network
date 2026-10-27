@@ -113,7 +113,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   page.setDefaultTimeout(12000);
-  const editionCount = scenario === 'pages' ? 49 : 5;
+  const editionCount = scenario === 'pages' ? 49 : scenario.startsWith('mint-auto') ? 10 : 5;
   const activeManifest =
     editionCount === 5
       ? manifest
@@ -149,6 +149,25 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
         unlocked = scenario !== 'locked',
         mintSupported = scenario.startsWith('mint');
       let mints = JSON.parse(sessionStorage.getItem('synthetic-nft-mints') || '[]');
+      let autoIndex = 0;
+      if (scenario === 'mint-auto-pending') {
+        mints = [
+          {
+            id: '12345678-1234-4234-8234-000000000001',
+            chainId: 1,
+            poolAddress: pool,
+            name: 'Fixture birds',
+            symbol: 'BIRD',
+            tokenId: '1',
+            state: 'pending',
+            stage: 'permit-expired',
+            canResume: true,
+            createdAt: Date.now(),
+            message: 'NFT mint 许可已过期',
+          },
+        ];
+        autoIndex = 1;
+      }
       const saveMints = () => sessionStorage.setItem('synthetic-nft-mints', JSON.stringify(mints));
       const listeners = new Map(),
         scopes = ['address', 'balances', 'history', 'notes', 'dexOrders'];
@@ -252,6 +271,29 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             case 'plabs_getNftMints':
               return evm === account ? mints : [];
             case 'plabs_mintNft': {
+              if (scenario.startsWith('mint-auto')) {
+                const number = ++autoIndex;
+                if (scenario === 'mint-auto-pause') await pending;
+                const rejected = scenario === 'mint-auto-reject' && number === 2;
+                const row = {
+                  id: `12345678-1234-4234-8234-${String(number).padStart(12, '0')}`,
+                  chainId: 1,
+                  poolAddress: pool,
+                  name: 'Fixture birds',
+                  symbol: 'BIRD',
+                  tokenId: String(number),
+                  state: rejected ? 'pending' : 'confirmed',
+                  stage: rejected ? 'approval' : 'confirmed',
+                  createdAt: Date.now(),
+                  canResume: rejected,
+                  ...(rejected
+                    ? { message: 'User rejected transaction' }
+                    : { txHash: `0x${String(number).padStart(64, '0')}` }),
+                };
+                mints.unshift(row);
+                saveMints();
+                return row;
+              }
               if (params[0].chainId !== 1 || params[0].poolAddress !== pool)
                 throw new Error('Unexpected mint intent');
               const mint = {
@@ -274,6 +316,18 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
               return mint;
             }
             case 'plabs_resumeNftMint': {
+              if (scenario === 'mint-auto-pending') {
+                const row = mints.find((row) => row.id === params[0]);
+                if (!row) throw Error('Wrong original mint');
+                Object.assign(row, {
+                  state: 'confirmed',
+                  stage: 'confirmed',
+                  canResume: false,
+                  txHash: `0x${'ab'.repeat(32)}`,
+                });
+                saveMints();
+                return row;
+              }
               if (params[0] !== mints[0]?.id) throw new Error('Unexpected recovery ID');
               mints[0] = {
                 ...mints[0],
@@ -405,8 +459,17 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
       return fulfill({
         ok: true,
         accessToken: 'synthetic-access-token',
-        whitelist:
-          scenario === 'ineligible' ? { ...allocation, eligible: false, remaining: 0 } : allocation,
+        whitelist: scenario.startsWith('mint-auto')
+          ? {
+              ...allocation,
+              allowance: 10,
+              minted: 0,
+              reserved: scenario === 'mint-auto-pending' ? 1 : 0,
+              remaining: scenario === 'mint-auto-pending' ? 9 : 10,
+            }
+          : scenario === 'ineligible'
+            ? { ...allocation, eligible: false, remaining: 0 }
+            : allocation,
       });
     }
     if (url.pathname.startsWith('/api/')) return fulfill({});
@@ -793,6 +856,67 @@ try {
     },
     { width: 390, height: 844 },
   );
+  await run(
+    'auto-mint-starts-once-and-resumes-the-existing-reservation',
+    'mint-auto-pending',
+    async (page) => {
+      await page.getByRole('button', { name: 'Auto mint remaining', exact: true }).click();
+      await page.getByText('Auto mint complete.', { exact: true }).waitFor();
+      await page.getByText('10 / 10 confirmed', { exact: true }).waitFor();
+      const calls = await page.evaluate(() => window.__nftFixture.calls);
+      assert.equal(calls.filter((c) => c.method === 'plabs_resumeNftMint').length, 1);
+      assert.equal(calls.filter((c) => c.method === 'plabs_mintNft').length, 9);
+      assert.equal(
+        calls.find((c) => c.method === 'plabs_resumeNftMint').params[0],
+        '12345678-1234-4234-8234-000000000001',
+      );
+    },
+  );
+  await run('auto-mint-stops-on-wallet-rejection', 'mint-auto-reject', async (page) => {
+    await page.getByRole('button', { name: 'Auto mint remaining', exact: true }).click();
+    await page.getByRole('button', { name: 'Resume mint', exact: true }).waitFor();
+    assert.equal(
+      (await page.evaluate(() => window.__nftFixture.calls)).filter(
+        (c) => c.method === 'plabs_mintNft',
+      ).length,
+      2,
+    );
+    await page.getByText('1 / 10 confirmed', { exact: true }).waitFor();
+  });
+  await run('auto-mint-pauses-after-the-active-wallet-request', 'mint-auto-pause', async (page) => {
+    await page.getByRole('button', { name: 'Auto mint remaining', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__nftFixture.calls.some((c) => c.method === 'plabs_mintNft'),
+    );
+    await page.getByRole('button', { name: 'Pause auto mint', exact: true }).click();
+    await page.evaluate(() => window.__nftFixture.release());
+    await page.getByRole('button', { name: 'Auto mint remaining', exact: true }).waitFor();
+    assert.equal(
+      (await page.evaluate(() => window.__nftFixture.calls)).filter(
+        (c) => c.method === 'plabs_mintNft',
+      ).length,
+      1,
+    );
+    await page.getByText('1 / 10 confirmed', { exact: true }).waitFor();
+  });
+  await run('auto-mint-account-change-aborts-the-old-queue', 'mint-auto-pause', async (page) => {
+    await page.getByRole('button', { name: 'Auto mint remaining', exact: true }).click();
+    await page.waitForFunction(() =>
+      window.__nftFixture.calls.some((c) => c.method === 'plabs_mintNft'),
+    );
+    await page.evaluate(() => {
+      window.__nftFixture.changeAccount();
+      window.__nftFixture.release();
+    });
+    await page.getByRole('button', { name: 'Mint NFT', exact: true }).waitFor();
+    assert.equal(
+      (await page.evaluate(() => window.__nftFixture.calls)).filter(
+        (c) => c.method === 'plabs_mintNft',
+      ).length,
+      1,
+    );
+    assert.equal(await page.getByText('10 / 10 confirmed', { exact: true }).count(), 0);
+  });
   console.log(`${passes} NFT Launch browser cases passed. Screenshots: ${artifactDir}`);
 } finally {
   await browser.close();
