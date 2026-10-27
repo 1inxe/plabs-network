@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Gem, RefreshCw, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createNftLaunchService,
@@ -16,6 +16,7 @@ import { apiEndpoints } from '@/shared/config/env';
 import { short } from '@/shared/lib/format';
 import { Badge, EmptyState, Modal, PageHeading } from '@/shared/ui';
 import { AllocationCheck } from './AllocationCheck';
+import { MintPanel } from './MintPanel';
 
 const service = createNftLaunchService(apiEndpoints.nft);
 const sales = {
@@ -49,6 +50,8 @@ function Artwork({ collection }: { collection: NftCollection }) {
 }
 function CollectionCard({ collection, now }: { collection: NftCollection; now: number }) {
   const [details, setDetails] = useState(false);
+  const [allocationRevision, setAllocationRevision] = useState(0);
+  const mintChanged = useCallback(() => setAllocationRevision((value) => value + 1), []);
   const status = useQuery({
     queryKey: ['nft', 'pool', collection.pool],
     queryFn: ({ signal }) => service.pool(collection.pool, signal),
@@ -131,21 +134,28 @@ function CollectionCard({ collection, now }: { collection: NftCollection; now: n
         {phase === 'Upcoming' && (
           <p className="muted-text">Starts {new Date(collection.startedAt).toLocaleString()}</p>
         )}
-        {live && data?.whitelist.enabled && <AllocationCheck pool={collection.pool} />}
+        {live && data?.whitelist.enabled && (
+          <AllocationCheck key={allocationRevision} pool={collection.pool} />
+        )}
+        {collection.saleKind === 'free' && (
+          <MintPanel pool={collection.pool} canMint={live} onChanged={mintChanged} />
+        )}
         <a
-          className={live ? 'primary-button' : 'secondary-button'}
+          className="text-link"
           href={officialNftCollectionUrl(collection.pool)}
           target="_blank"
           rel="noreferrer"
         >
-          {live
-            ? collection.saleKind === 'free' || collection.saleKind === 'fixed'
-              ? 'Mint on PLabs'
-              : 'Bid on PLabs'
-            : 'View on PLabs'}
+          {collection.saleKind === 'free'
+            ? 'View on PLabs'
+            : live
+              ? collection.saleKind === 'fixed'
+                ? 'Mint on PLabs'
+                : 'Bid on PLabs'
+              : 'View on PLabs'}
           <ArrowUpRight aria-hidden="true" size={15} />
         </a>
-        {live && (
+        {live && collection.saleKind !== 'free' && (
           <p className="nft-launch-handoff">Continue in PLabs with the same privacy wallet.</p>
         )}
       </div>
@@ -259,7 +269,7 @@ export function NftLaunchPage() {
       <PageHeading
         eyebrow="NFT LAUNCH / ETHEREUM"
         title="A new chapter in private ownership."
-        description="Explore private NFT drops, follow live mint progress, and check your allocation with PLabs Wallet."
+        description="Explore private NFT drops, check your allocation, and mint directly with PLabs Wallet."
         action={
           <button
             type="button"
@@ -359,8 +369,8 @@ export function NftLaunchPage() {
           <span className="eyebrow">YOUR PRIVACY WALLET</span>
           <h2>Your allocation travels with you.</h2>
           <p>
-            Allocation checks use your connected privacy address. Continue minting with that same
-            privacy wallet on PLabs.
+            Check allocation and mint with your connected PLabs Wallet. Your private NFTs appear in
+            the wallet after synchronization.
           </p>
         </div>
         <div>

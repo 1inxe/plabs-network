@@ -5,6 +5,29 @@ import type { PrivacyOwnershipProof, WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
+    async mintNft(request) {
+      try {
+        return await provider.request({ method: 'plabs_mintNft', params: [request] });
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
+    async resumeNftMint(id) {
+      try {
+        return await provider.request({ method: 'plabs_resumeNftMint', params: [id] });
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
+    async nftMints() {
+      try {
+        return await walletReadTimeout(
+          provider.request({ method: 'plabs_getNftMints', params: [] }),
+        );
+      } catch (error) {
+        throw toPlabsWalletError(error);
+      }
+    },
     async sendSponsoredTransaction(request) {
       try {
         return (await provider.request({

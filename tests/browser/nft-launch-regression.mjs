@@ -119,10 +119,12 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
     statusError = scenario === 'status-error';
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript(
-    ({ raw, account, proof, scenario }) => {
+    ({ raw, account, proof, scenario, pool }) => {
       let evm = account,
         chain = scenario === 'network' ? 143 : 1,
         unlocked = scenario !== 'locked';
+      let mints = JSON.parse(sessionStorage.getItem('synthetic-nft-mints') || '[]');
+      const saveMints = () => sessionStorage.setItem('synthetic-nft-mints', JSON.stringify(mints));
       const listeners = new Map(),
         scopes = ['address', 'balances', 'history', 'notes', 'dexOrders'];
       let release;
@@ -167,7 +169,12 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             case 'plabs_getCapabilities':
               return {
                 version: 1,
-                methods: { privacyRead: true, privacyOwnership: true, personalSign: true },
+                methods: {
+                  privacyRead: true,
+                  privacyOwnership: true,
+                  personalSign: true,
+                  nftMinting: scenario.startsWith('mint'),
+                },
                 networks: [
                   { chainId: 1, name: 'Ethereum', nativeSymbol: 'ETH', pools: [] },
                   { chainId: 143, name: 'Monad', nativeSymbol: 'MON', pools: [] },
@@ -191,6 +198,43 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             case 'plabs_getHistory':
             case 'plabs_getNotes':
               return { items: [], page: 1, pageSize: 20, total: 0, pages: 1 };
+            case 'plabs_getNftMints':
+              return evm === account ? mints : [];
+            case 'plabs_mintNft': {
+              if (params[0].chainId !== 1 || params[0].poolAddress !== pool)
+                throw new Error('Unexpected mint intent');
+              const mint = {
+                id: '12345678-1234-4234-8234-123456789012',
+                chainId: 1,
+                poolAddress: pool,
+                name: 'Fixture birds',
+                symbol: 'BIRD',
+                tokenId: '7',
+                state: 'pending',
+                stage: scenario === 'mint-reject' ? 'approval' : 'confirming',
+                canResume: true,
+                createdAt: Date.now(),
+                ...(scenario === 'mint-reject'
+                  ? { message: 'User rejected transaction; original proof saved' }
+                  : { txHash: `0x${'ab'.repeat(32)}` }),
+              };
+              mints = [mint];
+              saveMints();
+              return mint;
+            }
+            case 'plabs_resumeNftMint': {
+              if (params[0] !== mints[0]?.id) throw new Error('Unexpected recovery ID');
+              mints[0] = {
+                ...mints[0],
+                state: 'confirmed',
+                stage: 'confirmed',
+                canResume: false,
+                txHash: `0x${'ab'.repeat(32)}`,
+                message: 'NFT #7 confirmed; private note retained in wallet',
+              };
+              saveMints();
+              return mints[0];
+            }
             case 'plabs_getDexOrders':
               return { orders: [], fetchedAt: Date.now() };
             case 'plabs_provePrivacyOwnership':
@@ -209,7 +253,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
       };
       window.plabsPrivacyWallet = provider;
     },
-    { raw, account, proof, scenario },
+    { raw, account, proof, scenario, pool },
   );
   await context.route('**/*', async (route) => {
     const req = route.request(),
@@ -345,7 +389,7 @@ try {
     await page.getByRole('searchbox', { name: 'Search NFT collections' }).fill('BIRD');
     await page.getByRole('heading', { name: 'Fixture birds', exact: true }).waitFor();
     assert.equal(
-      await page.getByRole('link', { name: 'Mint on PLabs', exact: true }).getAttribute('href'),
+      await page.getByRole('link', { name: 'View on PLabs', exact: true }).getAttribute('href'),
       `https://app.plabs.online/privasea/collection/${pool}`,
     );
   });
@@ -402,9 +446,56 @@ try {
       setMinted(5);
       await page.getByRole('button', { name: 'Retry', exact: true }).click();
       await page.getByText('MINTED OUT', { exact: true }).waitFor();
-      assert.equal(await page.getByRole('link', { name: 'Mint on PLabs', exact: true }).count(), 0);
+      assert.equal(await page.getByRole('button', { name: 'Mint NFT', exact: true }).count(), 0);
       await page.getByRole('link', { name: 'View on PLabs', exact: true }).waitFor();
     },
+  );
+  await run('native-mint-reload-and-recover', 'mint', async (page) => {
+    await page.getByRole('button', { name: 'Mint NFT', exact: true }).click();
+    await page.getByRole('button', { name: 'Check mint status', exact: true }).waitFor();
+    assert.equal(
+      await page.evaluate(
+        () => window.__nftFixture.calls.filter((call) => call.method === 'plabs_mintNft').length,
+      ),
+      1,
+    );
+    await page.reload();
+    await page.getByRole('button', { name: 'Check mint status', exact: true }).click();
+    await page.getByText('Mint confirmed · #7', { exact: true }).waitFor();
+    assert.equal(
+      await page.evaluate(
+        () => window.__nftFixture.calls.filter((call) => call.method === 'plabs_mintNft').length,
+      ),
+      0,
+    );
+    assert.equal(
+      await page.evaluate(
+        () =>
+          window.__nftFixture.calls.filter((call) => call.method === 'plabs_resumeNftMint').length,
+      ),
+      1,
+    );
+    await page.screenshot({ path: join(artifactDir, 'native-mint-confirmed.png'), fullPage: true });
+  });
+  await run(
+    'native-mint-rejected-transaction-resumes-same-request',
+    'mint-reject',
+    async (page) => {
+      await page.getByRole('button', { name: 'Mint NFT', exact: true }).click();
+      await page.getByRole('button', { name: 'Resume mint', exact: true }).click();
+      await page.getByText('Mint confirmed · #7', { exact: true }).waitFor();
+      assert.equal(
+        await page.evaluate(
+          () => window.__nftFixture.calls.filter((call) => call.method === 'plabs_mintNft').length,
+        ),
+        1,
+      );
+      await page.evaluate(() => window.__nftFixture.changeAccount());
+      await page.getByRole('button', { name: 'Mint NFT', exact: true }).waitFor();
+      assert.equal(await page.getByText('Mint confirmed · #7', { exact: true }).count(), 0);
+      await page.screenshot({ path: join(artifactDir, 'native-mint-mobile.png'), fullPage: true });
+    },
+    { width: 390, height: 844 },
   );
   console.log(`${passes} NFT Launch browser cases passed. Screenshots: ${artifactDir}`);
 } finally {

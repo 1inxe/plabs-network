@@ -85,23 +85,48 @@ the current component/session, becomes visibly stale after a minute, and is
 cleared on identity, network, access or adapter changes. The returned access
 token is discarded. No personal-sign login is required for this check.
 
-## Minting and other official flows
+## Native mint and wallet NFT assets
 
-The official mint path reserves an edition, optionally obtains a distinct
-allowlisted **mint** authorization, generates an NFT proof, persists private
-recovery material, obtains a permit and requests an EVM transaction. It also
-supports recovering jobs and indexing the resulting private NFT note. These
-steps require an NFT proof/recovery interface that the current local extension
-and published SDK do not provide.
+Production update on 2026-10-27: the formal **Jubjub Bird** (`JUBJUB`) collection is
+`0xd4adb555b62dd50eb74be7650129f5c7e010e83e`, supply 2,100, on the same Ethereum
+market and factory. The original five-edition Test collection is retired in the
+official application and cannot be minted through the new wallet intent.
 
-This implementation therefore labels the action **Mint on PLabs** or **Bid on
-PLabs**, linking to `/privasea/collection/<pool>` on the official origin. It
-also provides explicit external links to the official collection creation,
-market and profile pages. The site does not call a nonexistent wallet method,
-export wallet seeds, reserve editions during an eligibility check, or treat a
-check-only proof as permission to mint. An allocation checked here can only
-apply there when the user continues with the same underlying privacy wallet;
-connecting the same EVM address alone does not establish this.
+Free mints use `plabs_mintNft({chainId: 1, poolAddress})`,
+`plabs_getNftMints()`, and `plabs_resumeNftMint(localId)` when `nftMinting` is
+advertised by the connected extension. The published SDK dependency remains at
+0.2.0; the frontend uses a direct provider bridge and the SDK source now includes
+typed methods for a future publication.
+
+After an initial wallet approval, the extension independently verifies the
+reviewed factory, minter, free-sale terms and dedicated `mintNoteHash` protocol.
+It signs a distinct **PrivaSea allowlisted free mint** ownership authorization,
+reserves an edition at the official intake service, generates the NFT Groth16
+proof locally, and requests the bound permit. The final transaction and ETH gas
+cap require a second wallet approval. `buy` / `buyWithPermit` are the only
+supported transaction methods, with zero native sale value and an empty token
+payment. Arbitrary dApp EVM transaction submission remains disabled.
+
+The wallet encrypts the private Note, proof and reservation before requesting a
+transaction signature, and persists the deterministic transaction hash before
+broadcast. A rejected final approval resumes the same reservation/proof. An
+uncertain broadcast only checks the saved transaction hash; it cannot generate
+a second transaction. Public responses contain no proof, Note opening, raw
+signature, seed or viewing key. Confirmations verify the canonical receipt,
+payer, market, NFT output commitment and pool state.
+
+The extension adds a separate **Private NFTs** asset section. It discovers
+collections through the reviewed market, scans encrypted output logs locally
+from deployment, checks locally derived spent markers, persists block/hash
+cursors and rescans after reorgs. It discovers transferred-in NFTs without a
+local mint history and removes spent Notes from holdings. NFT token IDs are
+never summed into ERC20 balances. The existing automatic-sync preference is
+respected while the unlocked wallet view is open, and a manual sync control is
+provided. Failed scans preserve cached assets with incomplete-coverage feedback.
+
+Paid mints, auctions, collection creation, the official marketplace and official
+profile remain explicit external links. NFT transfer submission is not included
+in this change. Users of earlier extensions see update/reload guidance.
 
 ## Deployment and verification
 
@@ -127,5 +152,11 @@ permits the two public RPC origins and blob artwork in its CSP.
 - Read-only live checks confirmed that the deployed catalog, intake response,
   verified artwork and layouts render on desktop and at 390 px without overflow.
 
-Real wallet ownership verification, native NFT minting, private NFT recovery,
-collection creation and secondary-market transactions were not exercised.
+Real-wallet production ownership verification and mint submission,
+collection creation and secondary-market transactions were not exercised. Native minting was verified with synthetic API/RPC fixtures, real local NFT Groth16 proving and decryption, and read-only checks of the formal production collection; no real-wallet mainnet mint or gas expenditure was performed.
+
+Frontend browser regression also covers direct wallet mint, status recovery after
+page reload, rejected final transactions and account isolation. Extension tests
+cover exact reservation/proof reuse, uncertain broadcasts, private journal
+binding, wrong recipients/networks, fixed gas review, incoming NFT discovery,
+spent-note removal and failure retention.

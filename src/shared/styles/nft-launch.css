@@ -342,3 +342,16 @@
     font-size: 28px;
   }
 }
+
+.nft-mint-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.nft-mint-panel > button {
+  width: 100%;
+}
+.nft-mint-panel p {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}

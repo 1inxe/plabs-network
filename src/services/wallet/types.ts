@@ -52,6 +52,7 @@ export type Capabilities = {
     privacyOwnership?: boolean;
     jubjubBidding?: boolean;
     sponsoredPrivacyTransfers?: boolean;
+    nftMinting?: boolean;
   };
   networks: WalletNetwork[];
 };
@@ -105,6 +106,9 @@ export type SponsoredPrivacyTransactionResult = {
   message?: string;
 };
 export interface WalletAdapter {
+  mintNft?(request: { chainId: 1; poolAddress: string }): Promise<unknown>;
+  resumeNftMint?(id: string): Promise<unknown>;
+  nftMints?(): Promise<unknown>;
   sendSponsoredTransaction?(
     request: SponsoredPrivacyTransactionRequest,
   ): Promise<SponsoredPrivacyTransactionResult>;

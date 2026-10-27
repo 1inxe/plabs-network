@@ -2,7 +2,7 @@
 
 新增 **NFT Launch**：运行 `pnpm dev` 后访问 `http://127.0.0.1:5180/privasea/launch`。支持 Ethereum 链上合集、图片校验、实时铸造进度、合集详情、搜索及隐私钱包额度查询。额度查询仅签署“查询资格”所有权证明，不预留 NFT，也不授权铸造。切换钱包账户、网络或隐私会话后清除查询结果。
 
-当前钱包与 SDK 尚无 NFT 铸造证明及恢复接口，**Mint on PLabs**、创建合集、NFT 市场和持仓入口明确打开官方页面，需使用同一隐私钱包继续操作。NFT 铸造不复用 JubJub 的 P20 托管付款接口。部署代理和验证边界见 [NFT Launch 接入记录](docs/nft-launch-research.md)。
+更新后的钱包支持 Ethereum 免费 NFT 的站内 mint：独立核对合集、预留、生成私有证明并确认 ETH Gas；前端只接收公开状态，支持刷新后的原请求恢复。钱包还新增了独立的隐私 NFT 持仓与链上同步区域。需重载新扩展并刷新网页，旧钱包显示更新提示。创建合集、市场、官方持仓页、付费 mint 与竞价仍通过明确的官方入口打开。NFT mint 不复用 JubJub P20 托管付款。详见 [NFT Launch 接入记录](docs/nft-launch-research.md)。
 
 新增 **JubJub 拍卖**：运行 `pnpm dev` 后访问 `http://127.0.0.1:5180/privasea/jubjub`。支持实时分析、个人订单、隐私身份登录、出价/加价、原付款恢复与结算退款查询。付款优先使用钱包的通用 `sponsoredPrivacyTransfers` 能力，兼容已安装的 `jubjubBidding` 旧接口；钱包需启用实验性隐私操作。证明与付款恢复资料保留在钱包内。
 

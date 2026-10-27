@@ -8,6 +8,8 @@ export const NFT_CHAIN_ID = 1;
 export const NFT_MARKET = '0x48269ee92a420fb1ba3db94a1593c233fa33068e';
 export const NFT_PAGE_SIZE = 12;
 export const NFT_MEDIA_ORIGIN = 'https://media.plabs.online';
+// The official release retired the five-edition mainnet test collection.
+const retiredPools = new Set(['0x9b8567c7a5ea98db6330be5945e8d14abba25758']);
 const rpcEndpoints = ['https://ethereum-rpc.publicnode.com/', 'https://eth.drpc.org/'];
 const address = z.string().regex(/^0x[0-9a-f]{40}$/);
 const hash = z.string().regex(/^0x[0-9a-f]{64}$/);
@@ -61,6 +63,7 @@ export const nftPoolSchema = z.object({
 export type NftPool = z.infer<typeof nftPoolSchema>;
 export type NftPhase = 'Upcoming' | 'Live' | 'Minted out' | 'Fully reserved' | 'Ended';
 export function nftPhase(collection: NftCollection, pool?: NftPool, now = Date.now()): NftPhase {
+  if (retiredPools.has(collection.pool)) return 'Ended';
   if ((pool?.minted ?? collection.minted) >= (pool?.supply ?? collection.supply))
     return 'Minted out';
   if (pool && !pool.registered) return 'Ended';
