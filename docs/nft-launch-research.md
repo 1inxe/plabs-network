@@ -94,9 +94,9 @@ official application and cannot be minted through the new wallet intent.
 
 Free mints use `plabs_mintNft({chainId: 1, poolAddress})`,
 `plabs_getNftMints()`, and `plabs_resumeNftMint(localId)` when `nftMinting` is
-advertised by the connected extension. The published SDK dependency remains at
-0.2.0; the frontend uses a direct provider bridge and the SDK source now includes
-typed methods for a future publication.
+advertised by the connected extension. Both the application and extension pin
+`plabs-js-sdk@0.3.0` from npm. The frontend uses its typed `mintNft`,
+`getNftMints`, `resumeNftMint`, `proveOwnership` and sponsored-payment helpers.
 
 After an initial wallet approval, the extension independently verifies the
 reviewed factory, minter, free-sale terms and dedicated `mintNoteHash` protocol.

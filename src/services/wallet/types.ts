@@ -2,11 +2,17 @@ import type {
   DexOrderIntent,
   DexOrderSummary,
   DexOrders,
+  NftMintRequest,
+  NftMintResult,
+  PlabsCapabilities,
   PrivacyHistoryPage,
   PrivacyNotes,
+  PrivacyOwnershipProof,
   PrivacyPageParams,
   PrivacyReadScope,
   PrivacySession,
+  SponsoredPrivacyTransactionRequest,
+  SponsoredPrivacyTransactionResult,
   WalletPortfolio,
 } from 'plabs-js-sdk';
 
@@ -14,11 +20,16 @@ export type {
   DexOrderIntent,
   DexOrderSummary,
   DexOrders,
+  NftMintRequest,
+  NftMintResult,
   PrivacyHistoryPage,
   PrivacyNotes,
+  PrivacyOwnershipProof,
   PrivacyPageParams,
   PrivacyReadScope,
   PrivacySession,
+  SponsoredPrivacyTransactionRequest,
+  SponsoredPrivacyTransactionResult,
   WalletPortfolio,
 };
 export type WalletPool = {
@@ -35,26 +46,8 @@ export type WalletNetwork = {
   nativeSymbol: string;
   pools: WalletPool[];
 };
-export type Capabilities = {
-  version: 1;
-  methods: {
-    personalSign: boolean;
-    signTypedData: boolean;
-    evmTransactions: boolean;
-    evmPreview: boolean;
-    privacyTransactions: boolean;
-    privacyRead?: boolean;
-    privacyHistory?: boolean;
-    privacyNotes?: boolean;
-    dexOrders?: boolean;
-    dexTrading?: boolean;
-    unifiedConnect?: boolean;
-    privacyOwnership?: boolean;
-    jubjubBidding?: boolean;
-    sponsoredPrivacyTransfers?: boolean;
-    nftMinting?: boolean;
-  };
-  networks: WalletNetwork[];
+export type Capabilities = Omit<PlabsCapabilities, 'methods'> & {
+  methods: PlabsCapabilities['methods'] & { jubjubBidding?: boolean };
 };
 export type WalletSession = {
   accounts: string[];
@@ -75,40 +68,10 @@ export type OperationResult = {
   txHash?: string;
   message?: string;
 };
-export type PrivacyOwnershipProof = {
-  version: 'bjj-schnorr-v1';
-  r_x_hex: string;
-  r_y_hex: string;
-  s_hex: string;
-};
-/** Bridge types until the published SDK includes the generic sponsored-payment API. */
-export type SponsoredPrivacyTransactionRequest = {
-  protocol: 'plabs-custody-v1';
-  apiBase: string;
-  campaignId: string;
-  rulesHash: string;
-  intentId: string;
-  token: string;
-  payment: {
-    chainId: 143;
-    poolAddress: string;
-    recipientRaw: string;
-    amountRaw: string;
-    memoPrefixHex: string;
-  };
-};
-export type SponsoredPrivacyTransactionResult = {
-  id: string;
-  intentId: string;
-  state: 'pending' | 'confirmed' | 'failed';
-  jobId?: string;
-  txHash?: string;
-  message?: string;
-};
 export interface WalletAdapter {
-  mintNft?(request: { chainId: 1; poolAddress: string }): Promise<unknown>;
-  resumeNftMint?(id: string): Promise<unknown>;
-  nftMints?(): Promise<unknown>;
+  mintNft?(request: NftMintRequest): Promise<NftMintResult>;
+  resumeNftMint?(id: string): Promise<NftMintResult>;
+  nftMints?(): Promise<NftMintResult[]>;
   sendSponsoredTransaction?(
     request: SponsoredPrivacyTransactionRequest,
   ): Promise<SponsoredPrivacyTransactionResult>;

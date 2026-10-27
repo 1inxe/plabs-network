@@ -1,43 +1,14 @@
 import type { PlabsProvider } from 'plabs-js-sdk';
 import { createPlabsWallet, discoverPlabsWallets, toPlabsWalletError } from 'plabs-js-sdk';
 import { walletReadTimeout } from './request-timeout';
-import type { PrivacyOwnershipProof, WalletAdapter } from './types';
+import type { WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
-    async mintNft(request) {
-      try {
-        return await provider.request({ method: 'plabs_mintNft', params: [request] });
-      } catch (error) {
-        throw toPlabsWalletError(error);
-      }
-    },
-    async resumeNftMint(id) {
-      try {
-        return await provider.request({ method: 'plabs_resumeNftMint', params: [id] });
-      } catch (error) {
-        throw toPlabsWalletError(error);
-      }
-    },
-    async nftMints() {
-      try {
-        return await walletReadTimeout(
-          provider.request({ method: 'plabs_getNftMints', params: [] }),
-        );
-      } catch (error) {
-        throw toPlabsWalletError(error);
-      }
-    },
-    async sendSponsoredTransaction(request) {
-      try {
-        return (await provider.request({
-          method: 'plabs_sendSponsoredPrivacyTransaction',
-          params: [request],
-        })) as Awaited<ReturnType<NonNullable<WalletAdapter['sendSponsoredTransaction']>>>;
-      } catch (error) {
-        throw toPlabsWalletError(error);
-      }
-    },
+    mintNft: (request) => sdk.privacy.mintNft(request),
+    resumeNftMint: (id) => sdk.privacy.resumeNftMint(id),
+    nftMints: () => walletReadTimeout(sdk.privacy.getNftMints()),
+    sendSponsoredTransaction: (request) => sdk.privacy.sendSponsoredTransaction(request),
     async fundJubjubBid(request) {
       try {
         return (await provider.request({
@@ -49,17 +20,8 @@ export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
       }
     },
     signMessage: (message, address) => sdk.evm.signMessage(message, address),
-    // Bridge the new RPC while consumers retain the published SDK version.
-    async provePrivacyOwnership(message, privacyAddress) {
-      try {
-        return (await provider.request({
-          method: 'plabs_provePrivacyOwnership',
-          params: [{ message, privacyAddress }],
-        })) as PrivacyOwnershipProof;
-      } catch (error) {
-        throw toPlabsWalletError(error);
-      }
-    },
+    provePrivacyOwnership: (message, privacyAddress) =>
+      sdk.privacy.proveOwnership(message, privacyAddress),
     async session() {
       const [accounts, chainId, capabilities] = await walletReadTimeout(
         Promise.all([sdk.getAccounts(), sdk.evm.getChainId(), sdk.capabilities()]),
