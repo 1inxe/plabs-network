@@ -36,6 +36,7 @@ const { config } = await loadConfigFromFile({ command: 'serve', mode: 'developme
 const server = await createServer({
   ...config,
   configFile: false,
+  cacheDir: resolve('node_modules/.vite/nft-regression'),
   server: { host: '127.0.0.1', port: 0, proxy: {} },
 });
 await server.listen();
@@ -704,7 +705,11 @@ try {
       await page.locator('.nft-item-card').getByText('Minted', { exact: true }).first().waitFor();
       const before = calls.length;
       failNextStatus();
+      const recovered = page.waitForResponse(
+        (response) => response.url().includes('/api/nft/pool/') && response.status() === 200,
+      );
       await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+      await recovered;
       await page.waitForFunction(
         () => !document.querySelector('.nft-collection-tabs button[disabled]'),
       );

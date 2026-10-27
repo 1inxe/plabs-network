@@ -49,6 +49,7 @@ export type WalletNetwork = {
   pools: WalletPool[];
 };
 export type Capabilities = Omit<PlabsCapabilities, 'methods'> & {
+  walletVersion?: string;
   methods: PlabsCapabilities['methods'] & { jubjubBidding?: boolean };
 };
 export type WalletSession = {

@@ -100,6 +100,16 @@ function requestRoute(req, mode, protocol) {
       throw new ProxyError(400, 'Invalid API path.');
   }
   const nft = protocol === 'nft';
+  // Vercel also passes the named :pool rewrite capture as query metadata.
+  // Accept only the single redundant capture bound to the selected route.
+  if (
+    mode === 'query' &&
+    nft &&
+    query.getAll('pool').length === 1 &&
+    /^0x[0-9a-f]{40}$/.test(query.get('pool') ?? '') &&
+    route === `pool/${query.get('pool')}`
+  )
+    query.delete('pool');
   const poolRoute = nft && /^pool\/0x[0-9a-f]{40}$/.test(route);
   const method = nft
     ? poolRoute

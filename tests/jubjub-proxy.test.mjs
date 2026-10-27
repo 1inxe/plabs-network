@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createServer, request as httpRequest } from 'node:http';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { createServer as createViteServer, loadConfigFromFile } from 'vite';
 import { createJubjubProxyHandler, jubjubProxyEnabled } from '../server/jubjub-proxy.mjs';
@@ -387,6 +388,7 @@ test('an explicit empty Vite proxy map keeps fixture requests local and installs
   const config = loaded.config;
   config.configFile = false;
   config.logLevel = 'silent';
+  config.cacheDir = resolve('node_modules/.vite/proxy-test');
   config.server = { host: '127.0.0.1', port: 0, strictPort: false, proxy: {} };
   config.plugins.push({
     name: 'offline-test-responder',

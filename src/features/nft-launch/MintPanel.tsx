@@ -179,12 +179,22 @@ function MintForm({
               ? 'Checking wallet mint support…'
               : liveCapabilities.isError
                 ? errorMessage(liveCapabilities.error)
-                : 'The connected wallet does not report NFT mint support.'}
+                : `The connected wallet${wallet.capabilities?.walletVersion ? ` (${wallet.capabilities.walletVersion})` : ''} does not report NFT mint support.`}
           </p>
           {!liveCapabilities.isFetching && !liveCapabilities.isError && (
             <p className="muted-text">
-              Reload PLabs Wallet in your browser’s extension manager, then check again.
+              Load PLabs Wallet 0.8.2 or newer, then reload the extension and check again.
             </p>
+          )}
+          {!supported && !liveCapabilities.isFetching && (
+            <a
+              className="text-link"
+              href="https://github.com/1inxe/plabs-wallet/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download latest wallet <ExternalLink size={12} />
+            </a>
           )}
           <button
             type="button"

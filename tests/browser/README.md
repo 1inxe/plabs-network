@@ -120,3 +120,5 @@ first-bid distributions, and the seven bands on mobile.
 # Native NFT pages
 
 Run `node tests/browser/nft-launch-regression.mjs`. The 18 scenarios include native Home/Launch/Market/Create/Profile navigation, direct collection/item reloads, item pagination/back state, nonsequential issued IDs, stale index/chain failures, mobile layouts, separate NFT consent, received assets, account changes, delayed reads, allocation checks, mint/resume recovery, wallet capability changes, browser focus, transient status retries and persistent status recovery. All wallet responses and financial actions are synthetic. Screenshots are written to the system temporary artifact directory printed by the runner.
+
+To check the SDK in an already-running dev server, use `node tests/browser/sdk-runtime-regression.mjs` (override the origin with `SDK_RUNTIME_ORIGIN`). This catches stale served dependencies that a newly-created fixture server would miss. The synthetic provider records method names only; no real approval or transaction is requested.

@@ -47,6 +47,9 @@ const jubjubProxy: Plugin = {
 };
 export default defineConfig({
   plugins: [react(), tailwindcss(), jubjubProxy],
+  // The SDK is native ESM. Serving its versioned package modules directly avoids
+  // retaining an older optimized SDK when pnpm upgrades it under a running dev server.
+  optimizeDeps: { exclude: ['plabs-js-sdk'] },
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   server: { port: 5180, strictPort: true, proxy },
   preview: { port: 5180, strictPort: true, proxy },

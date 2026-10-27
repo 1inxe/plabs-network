@@ -44,3 +44,11 @@ The original direct collection URL initially produced “Collection not found”
 Public NFT status queries retry a transient network, timeout or server failure once; contract/authorization errors are not automatically retried. Cached status and on-chain identities remain visible. Persistent errors show the actual failure and last snapshot time with a manual retry.
 
 NFT pages refresh the connected wallet's feature flags on mount, browser focus and explicit **Check wallet again**. This calls only the public capabilities RPC, never reconnects, grants privacy access or submits a mint. Late responses from a changed wallet context are discarded. A wallet still reporting no NFT support receives extension reload guidance.
+
+## Runtime/deployment corrections
+
+The production Vercel rewrite supplies both `route=pool/:pool` and a redundant named `pool` capture. The proxy accepts this capture only when it is a single canonical address exactly matching the selected route; other query parameters, mismatches and duplicates remain rejected. Validation includes the actual public production URL after deployment, not only direct function URLs.
+
+A long-running local Vite process was observed serving an older optimized SDK without `proveOwnership`, even though the installed package was 0.3.1. The native ESM SDK is now excluded from dependency prebundling, and each browser fixture uses its own dependency cache. `node tests/browser/sdk-runtime-regression.mjs` probes the adapter served by the currently running dev process with a synthetic provider; it checks ownership, mint, recovery and holdings methods without signing or sending a real transaction.
+
+Wallet 0.8.2 identifies its running build in the public capability response. Unsupported wallets receive a link to the extension release; the actual extension must be reloaded by the browser before its new methods become available.

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { createJubjubProxyHandler } from '../server/jubjub-proxy.mjs';
 
 const pool = `0x${'56'.repeat(20)}`;
-async function fixture(t, routeMode = 'path') {
+async function fixture(t, routeMode = 'path', rewriteQuery) {
   const calls = [];
   const handler = createJubjubProxyHandler({
     protocol: 'nft',
@@ -14,7 +14,10 @@ async function fixture(t, routeMode = 'path') {
       return Response.json({ synthetic: true });
     },
   });
-  const server = createServer(handler);
+  const server = createServer((req, res) => {
+    if (rewriteQuery) req.query = rewriteQuery;
+    void handler(req, res);
+  });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(
     () =>
@@ -85,4 +88,25 @@ test('Vercel NFT rewrite carries the selected route without allowing API scope e
   assert.equal((await fetch(`${f.url}/api/nft-proxy?route=pool/${pool}&route=config`)).status, 400);
   assert.equal((await fetch(`${f.url}/api/nft-proxy?route=../config`)).status, 404);
   assert.equal(f.calls.length, 1);
+});
+
+test('Vercel named pool capture is accepted only when it exactly matches the selected public route', async (t) => {
+  const f = await fixture(t, 'query', { route: `pool/${pool}`, pool });
+  assert.equal((await fetch(`${f.url}/api/nft/pool/${pool}`)).status, 200);
+  assert.equal(f.calls[0].url, `https://app.plabs.online/nft-intake/v1/pool/${pool}`);
+  const direct = await fixture(t, 'query');
+  assert.equal(
+    (await fetch(`${direct.url}/api/nft-proxy?route=pool/${pool}&pool=${pool}`)).status,
+    200,
+  );
+  for (const query of [
+    `pool=0x${'ab'.repeat(20)}`,
+    `pool=${pool}&pool=${pool}`,
+    `pool=${pool}&wallet=private`,
+  ])
+    assert.equal(
+      (await fetch(`${direct.url}/api/nft-proxy?route=pool/${pool}&${query}`)).status,
+      400,
+    );
+  assert.equal(direct.calls.length, 1);
 });

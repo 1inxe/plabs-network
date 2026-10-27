@@ -699,6 +699,7 @@ export async function createJubjubFixtureServer({ port = 5182 } = {}) {
       });
     },
   });
+  config.cacheDir = resolve(root, 'node_modules/.vite/jubjub-fixture');
   const server = await createServer(config);
   await server.listen();
   return {

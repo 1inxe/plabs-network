@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import { createServer, loadConfigFromFile } from 'vite';
 
 const { config } = await loadConfigFromFile({ command: 'serve', mode: 'development' });
@@ -31,6 +32,7 @@ const provider={isPlabsWallet:true,on(){},removeListener(){},async request({meth
 window.addEventListener('DOMContentLoaded',()=>{const b=document.createElement('div');b.textContent='TEST FIXTURE · synthetic wallet and rewards · no real signatures';b.style='background:#edbb76;color:#111;padding:8px;text-align:center;position:relative;z-index:9999';document.body.prepend(b);});
 `;
 config.configFile = false;
+config.cacheDir = resolve('node_modules/.vite/qualification-fixture');
 config.server = { host: '127.0.0.1', port: 5181, strictPort: true, proxy: {} };
 config.plugins.push({
   name: 'qualification-test-only',
