@@ -138,13 +138,15 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
     errors = [],
     external = [];
   let minted = 2,
-    statusError = scenario === 'status-error';
+    statusError = scenario === 'status-error',
+    transientFailures = 0;
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript(
     ({ raw, account, proof, scenario, pool }) => {
       let evm = account,
         chain = scenario === 'network' ? 143 : 1,
-        unlocked = scenario !== 'locked';
+        unlocked = scenario !== 'locked',
+        mintSupported = scenario.startsWith('mint');
       let mints = JSON.parse(sessionStorage.getItem('synthetic-nft-mints') || '[]');
       const saveMints = () => sessionStorage.setItem('synthetic-nft-mints', JSON.stringify(mints));
       const listeners = new Map(),
@@ -155,6 +157,9 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
       });
       window.__nftFixture = {
         calls: [],
+        enableMinting() {
+          mintSupported = true;
+        },
         changeAccount() {
           evm = `0x${'90'.repeat(20)}`;
           for (const fn of listeners.get('accountsChanged') ?? []) fn([evm]);
@@ -195,7 +200,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
                   privacyRead: true,
                   privacyOwnership: true,
                   personalSign: true,
-                  nftMinting: scenario.startsWith('mint'),
+                  nftMinting: mintSupported,
                   nftAssets: scenario.startsWith('profile'),
                 },
                 networks: [
@@ -344,7 +349,12 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
         200,
         url.pathname.endsWith('manifest.json') ? 'application/json' : 'image/png',
       );
-    if (url.pathname.startsWith('/api/nft/pool/'))
+    if (url.pathname.startsWith('/api/nft/pool/')) {
+      calls.push({ poolStatus: statusError || transientFailures > 0 ? 503 : 200 });
+      if (transientFailures > 0) {
+        transientFailures--;
+        return fulfill({ error: 'synthetic transient outage' }, 503);
+      }
       return fulfill(
         statusError
           ? { error: 'synthetic outage' }
@@ -380,6 +390,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             },
         statusError ? 503 : 200,
       );
+    }
     if (url.pathname === '/api/nft/whitelist/check') {
       const body = req.postDataJSON();
       calls.push({ check: body });
@@ -408,6 +419,12 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
       calls,
       setMinted: (value) => {
         minted = value;
+      },
+      failNextStatus: () => {
+        transientFailures = 1;
+      },
+      failStatus: () => {
+        statusError = true;
       },
       restoreStatus: () => {
         statusError = false;
@@ -500,7 +517,7 @@ try {
   });
   await run('stale-index-never-claims-unminted', 'stale-index', async (page) => {
     await page.goto(`${origin}/privasea/collection/${pool}`);
-    await page.getByText(/The index is catching up/).waitFor();
+    await page.getByText(/Ethereum mint identities could not be checked/).waitFor();
     assert.equal(
       await page.locator('.nft-item-card').getByText('Unminted', { exact: true }).count(),
       0,
@@ -645,6 +662,83 @@ try {
       await page.getByText('MINTED OUT', { exact: true }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Mint NFT', exact: true }).count(), 0);
       await page.getByRole('link', { name: 'View collection', exact: true }).waitFor();
+    },
+  );
+  await run(
+    'wallet-upgrade-rechecks-live-capabilities-without-reconnecting',
+    'upgrade',
+    async (page) => {
+      await page.getByRole('button', { name: 'Check wallet again' }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Mint NFT', exact: true }).count(), 0);
+      await page.evaluate(() => window.__nftFixture.enableMinting());
+      await page.getByRole('button', { name: 'Check wallet again' }).click();
+      await page.getByRole('button', { name: 'Mint NFT', exact: true }).waitFor();
+      const calls = await page.evaluate(() => window.__nftFixture.calls);
+      assert.equal(
+        calls.some((c) =>
+          ['plabs_requestPrivacyAccess', 'plabs_mintNft', 'plabs_resumeNftMint'].includes(c.method),
+        ),
+        false,
+      );
+    },
+  );
+  await run('wallet-upgrade-is-detected-on-browser-focus', 'upgrade', async (page) => {
+    await page.getByRole('button', { name: 'Check wallet again' }).waitFor();
+    await page.evaluate(() => {
+      window.__nftFixture.enableMinting();
+      window.dispatchEvent(new Event('focus'));
+    });
+    await page.getByRole('button', { name: 'Mint NFT', exact: true }).waitFor();
+    assert.equal(
+      (await page.evaluate(() => window.__nftFixture.calls)).filter(
+        (c) => c.method === 'eth_requestAccounts',
+      ).length,
+      0,
+    );
+  });
+  await run(
+    'transient-status-failure-retries-only-the-public-read',
+    'normal',
+    async (page, { calls, failNextStatus }) => {
+      await page.goto(`${origin}/privasea/collection/${pool}`);
+      await page.locator('.nft-item-card').getByText('Minted', { exact: true }).first().waitFor();
+      const before = calls.length;
+      failNextStatus();
+      await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+      await page.waitForFunction(
+        () => !document.querySelector('.nft-collection-tabs button[disabled]'),
+      );
+      const results = calls.slice(before).filter((c) => c.poolStatus);
+      assert.deepEqual(
+        results.map((c) => c.poolStatus),
+        [503, 200],
+      );
+      assert.equal(await page.locator('.nft-launch-error').count(), 0);
+      assert.equal(
+        (await page.evaluate(() => window.__nftFixture.calls)).some(
+          (c) => c.method === 'plabs_mintNft',
+        ),
+        false,
+      );
+    },
+  );
+  await run(
+    'status-failure-explains-the-reason-and-manual-retry-recovers',
+    'normal',
+    async (page, { failStatus, restoreStatus }) => {
+      await page.goto(`${origin}/privasea/collection/${pool}`);
+      await page.locator('.nft-item-card').getByText('Minted', { exact: true }).first().waitFor();
+      failStatus();
+      await page.getByRole('button', { name: 'Refresh', exact: true }).click();
+      await page.getByText(/HTTP 503/).waitFor();
+      await page.getByText(/Last snapshot:/).waitFor();
+      assert.equal(
+        await page.locator('.nft-item-card').getByText('Minted', { exact: true }).count(),
+        2,
+      );
+      restoreStatus();
+      await page.getByRole('button', { name: 'Retry status', exact: true }).click();
+      await page.waitForFunction(() => !document.querySelector('.nft-launch-error'));
     },
   );
   await run('native-mint-reload-and-recover', 'mint', async (page) => {

@@ -711,3 +711,11 @@
     gap: 16px;
   }
 }
+
+.nft-wallet-support {
+  display: grid;
+  gap: 10px;
+}
+.nft-wallet-support .secondary-button {
+  width: 100%;
+}

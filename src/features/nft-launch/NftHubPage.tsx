@@ -5,20 +5,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { z } from 'zod';
 import { useWallet } from '@/features/wallet';
 import {
-  createNftLaunchService,
   loadNftCatalog,
   loadNftCollection,
   type NftCollection,
   nftCollectionPath,
 } from '@/services/platform/nft-launch';
 import { errorMessage } from '@/shared/api/errors';
-import { apiEndpoints } from '@/shared/config/env';
 import { Badge, EmptyState, PageHeading } from '@/shared/ui';
 import { mintSchema } from './MintPanel';
 import { NftArtwork } from './NftArtwork';
 import { PrivaSeaNav } from './PrivaSeaNav';
+import { useNftPool } from './useNftPool';
+import { useNftWalletCapabilities } from './useNftWalletCapabilities';
 
-const service = createNftLaunchService(apiEndpoints.nft);
 const assetSnapshot = z.object({
   chainId: z.literal(1),
   syncedAt: z.number().nullable(),
@@ -45,12 +44,7 @@ function CollectionTile({
   collection: NftCollection;
   market?: boolean;
 }) {
-  const status = useQuery({
-    queryKey: ['nft', 'pool', collection.pool],
-    queryFn: ({ signal }) => service.pool(collection.pool, signal),
-    retry: false,
-    staleTime: 10000,
-  });
+  const status = useNftPool(collection.pool);
   return (
     <Link className="nft-launch-card nft-hub-card" to={nftCollectionPath(collection.pool)}>
       <div className="nft-launch-art">
@@ -112,6 +106,7 @@ function HoldingCard({
   );
 }
 function Profile() {
+  useNftWalletCapabilities();
   const wallet = useWallet();
   return (
     <ProfileSession

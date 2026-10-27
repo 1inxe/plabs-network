@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { useWallet } from '@/features/wallet';
 import { errorMessage } from '@/shared/api/errors';
+import { useNftWalletCapabilities } from './useNftWalletCapabilities';
 
 export const mintSchema = z.object({
   id: z.string().uuid(),
@@ -81,6 +82,7 @@ function MintForm({
       active.current = false;
     };
   }, []);
+  const liveCapabilities = useNftWalletCapabilities();
   const supported = wallet.capabilities?.methods.nftMinting === true;
   const enabled = !!wallet.account && wallet.chainId === 1 && !!wallet.privacyAddress && supported;
   const key = [
@@ -171,7 +173,28 @@ function MintForm({
   return (
     <div className="nft-mint-panel">
       {wallet.account && !supported ? (
-        <p className="muted-text">Update and reload PLabs Wallet to mint here.</p>
+        <div className="nft-wallet-support" role="status">
+          <p className="muted-text">
+            {liveCapabilities.isFetching
+              ? 'Checking wallet mint support…'
+              : liveCapabilities.isError
+                ? errorMessage(liveCapabilities.error)
+                : 'The connected wallet does not report NFT mint support.'}
+          </p>
+          {!liveCapabilities.isFetching && !liveCapabilities.isError && (
+            <p className="muted-text">
+              Reload PLabs Wallet in your browser’s extension manager, then check again.
+            </p>
+          )}
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={liveCapabilities.isFetching}
+            onClick={() => void liveCapabilities.refetch()}
+          >
+            {liveCapabilities.isFetching ? 'Checking wallet…' : 'Check wallet again'}
+          </button>
+        </div>
       ) : (
         <button
           type="button"

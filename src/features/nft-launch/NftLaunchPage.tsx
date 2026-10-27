@@ -3,7 +3,6 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, Gem, RefreshCw, Search } from 'luc
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  createNftLaunchService,
   loadNftCatalog,
   NFT_PAGE_SIZE,
   type NftCollection,
@@ -11,14 +10,13 @@ import {
   nftPhase,
 } from '@/services/platform/nft-launch';
 import { errorMessage } from '@/shared/api/errors';
-import { apiEndpoints } from '@/shared/config/env';
 import { Badge, EmptyState, PageHeading } from '@/shared/ui';
 import { AllocationCheck } from './AllocationCheck';
 import { MintPanel } from './MintPanel';
 import { NftArtwork as Artwork } from './NftArtwork';
 import { PrivaSeaNav } from './PrivaSeaNav';
+import { useNftPool } from './useNftPool';
 
-const service = createNftLaunchService(apiEndpoints.nft);
 const sales = {
   free: 'Free mint',
   fixed: 'Fixed price',
@@ -28,12 +26,7 @@ const sales = {
 function CollectionCard({ collection, now }: { collection: NftCollection; now: number }) {
   const [allocationRevision, setAllocationRevision] = useState(0);
   const mintChanged = useCallback(() => setAllocationRevision((value) => value + 1), []);
-  const status = useQuery({
-    queryKey: ['nft', 'pool', collection.pool],
-    queryFn: ({ signal }) => service.pool(collection.pool, signal),
-    refetchInterval: 10000,
-    retry: false,
-  });
+  const status = useNftPool(collection.pool);
   const data = status.data;
   const phase = nftPhase(collection, data, now);
   const minted = data?.minted ?? collection.minted;

@@ -71,6 +71,7 @@ export type OperationResult = {
   message?: string;
 };
 export interface WalletAdapter {
+  capabilities?(): Promise<Capabilities>;
   mintNft?(request: NftMintRequest): Promise<NftMintResult>;
   resumeNftMint?(id: string): Promise<NftMintResult>;
   nftMints?(): Promise<NftMintResult[]>;

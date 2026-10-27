@@ -11,7 +11,6 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import {
-  createNftLaunchService,
   loadNftCollection,
   loadNftIssued,
   type NftCollection,
@@ -20,15 +19,14 @@ import {
   nftPhase,
 } from '@/services/platform/nft-launch';
 import { errorMessage } from '@/shared/api/errors';
-import { apiEndpoints } from '@/shared/config/env';
 import { short } from '@/shared/lib/format';
 import { Badge, EmptyState } from '@/shared/ui';
 import { AllocationCheck } from './AllocationCheck';
 import { MintPanel } from './MintPanel';
 import { NftArtwork, useNftManifest } from './NftArtwork';
 import { PrivaSeaNav } from './PrivaSeaNav';
+import { useNftPool } from './useNftPool';
 
-const service = createNftLaunchService(apiEndpoints.nft);
 const PAGE_SIZE = 24;
 const saleLabels = {
   free: 'Free mint',
@@ -60,12 +58,7 @@ function CollectionView({ collection, tokenId }: { collection: NftCollection; to
   const [revision, setRevision] = useState(0);
   const [now, setNow] = useState(Date.now);
   const changed = useCallback(() => setRevision((value) => value + 1), []);
-  const status = useQuery({
-    queryKey: ['nft', 'pool', collection.pool],
-    queryFn: ({ signal }) => service.pool(collection.pool, signal),
-    refetchInterval: 10000,
-    retry: false,
-  });
+  const status = useNftPool(collection.pool);
   const issued = useQuery({
     queryKey: ['nft', 'issued', collection.pool, revision],
     queryFn: ({ signal }) => loadNftIssued(collection, signal),
@@ -123,14 +116,19 @@ function CollectionView({ collection, tokenId }: { collection: NftCollection; to
         <div className="nft-launch-error" role="status">
           <span>
             {status.isError
-              ? 'Live collection status is unavailable.'
+              ? 'Live mint availability could not be refreshed.'
               : issued.isError
                 ? 'Ethereum mint identities could not be checked.'
                 : 'The index is catching up with Ethereum.'}{' '}
-            Showing the last available snapshot;{' '}
+            {status.isError
+              ? errorMessage(status.error)
+              : issued.isError
+                ? errorMessage(issued.error)
+                : 'The service has not caught up with the latest block.'}
+            {pool && <> Last snapshot: {new Date(pool.asOf).toLocaleTimeString()}.</>}
             {known
-              ? 'Mint identities are checked separately.'
-              : 'Missing items are not marked unminted.'}
+              ? ' On-chain mint information is still available.'
+              : ' Mint status is still being checked.'}
           </span>
           <button
             className="text-button"
@@ -139,8 +137,9 @@ function CollectionView({ collection, tokenId }: { collection: NftCollection; to
               void status.refetch();
               void issued.refetch();
             }}
+            disabled={status.isFetching || issued.isFetching}
           >
-            Retry status
+            {status.isFetching || issued.isFetching ? 'Refreshing status…' : 'Retry status'}
           </button>
         </div>
       )}

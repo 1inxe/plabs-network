@@ -43,6 +43,7 @@ export function useWallet() {
     switchChain: store.switchChain,
     transact: store.transact,
     refreshStatus: store.refreshStatus,
+    refreshCapabilities: store.refreshCapabilities,
     authorizeRead: store.authorizeRead,
     revokeRead: store.revokeRead,
     refreshPortfolio: store.refreshPortfolio,

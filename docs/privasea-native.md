@@ -38,3 +38,9 @@ The original direct collection URL initially produced “Collection not found”
 ## Validation
 
 `tests/browser/nft-launch-regression.mjs` covers native navigation, collection/item reloads, pagination/back state, nonsequential mint identities, stale index state, mobile layout, explicit NFT consent, received assets, account changes, stale responses and the existing mint/resume cases. Synthetic wallet data is used for financial actions; no real mint, payment or deployment is submitted by these tests.
+
+## Status and wallet recovery
+
+Public NFT status queries retry a transient network, timeout or server failure once; contract/authorization errors are not automatically retried. Cached status and on-chain identities remain visible. Persistent errors show the actual failure and last snapshot time with a manual retry.
+
+NFT pages refresh the connected wallet's feature flags on mount, browser focus and explicit **Check wallet again**. This calls only the public capabilities RPC, never reconnects, grants privacy access or submits a mint. Late responses from a changed wallet context are discarded. A wallet still reporting no NFT support receives extension reload guidance.

@@ -94,6 +94,7 @@ export class WalletStore {
   private binding = 0;
   private disposeAdapter?: () => void;
   private locked = false;
+  private capabilityRead?: { binding: number; revision: number; promise: Promise<Capabilities> };
   private restoration?: {
     revision: number;
     binding: number;
@@ -101,6 +102,33 @@ export class WalletStore {
     promise: Promise<void>;
   };
   getSnapshot = () => this.state;
+  /** Refresh public feature flags without reconnecting or requesting any privacy access. */
+  refreshCapabilities = (): Promise<Capabilities> => {
+    const adapter = this.state.wallet;
+    if (!adapter) return Promise.reject(new Error('Connect PLabs Wallet to check its features.'));
+    const binding = this.binding,
+      revision = this.revision;
+    if (this.capabilityRead?.binding === binding && this.capabilityRead.revision === revision)
+      return this.capabilityRead.promise;
+    const promise = (async () => {
+      const capabilities = adapter.capabilities
+        ? await adapter.capabilities()
+        : (await adapter.session()).capabilities;
+      if (binding !== this.binding || revision !== this.revision || adapter !== this.state.wallet)
+        throw new Error('Your wallet changed while checking its features. Check again.');
+      if (capabilities?.version !== 1 || !capabilities.methods)
+        throw new Error('The wallet returned unreadable feature information. Check again.');
+      this.patch({ capabilities });
+      return capabilities;
+    })();
+    this.capabilityRead = { binding, revision, promise };
+    void promise
+      .finally(() => {
+        if (this.capabilityRead?.promise === promise) this.capabilityRead = undefined;
+      })
+      .catch(() => {});
+    return promise;
+  };
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => {
