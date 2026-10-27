@@ -10,6 +10,7 @@ const Explorer = lazy(() => import('@/features/explorer'));
 const History = lazy(() => import('@/features/history'));
 const Collectibles = lazy(() => import('@/features/collectibles'));
 const Jubjub = lazy(() => import('@/features/jubjub'));
+const NftLaunch = lazy(() => import('@/features/nft-launch'));
 const Ecosystem = lazy(() => import('@/features/ecosystem'));
 export const router = createBrowserRouter([
   {
@@ -30,7 +31,9 @@ export const router = createBrowserRouter([
           { path: 'privacyfi', element: <Navigate to="/assets" replace /> },
           { path: 'privasea/whitelist', element: <Navigate to="/p-sea" replace /> },
           { path: 'privasea/jubjub', element: <Jubjub /> },
-          { path: 'privasea', element: <Navigate to="/p-sea" replace /> },
+          { path: 'privasea/launch', element: <NftLaunch /> },
+          { path: 'p-sea/launch', element: <Navigate to="/privasea/launch" replace /> },
+          { path: 'privasea', element: <Navigate to="/privasea/launch" replace /> },
           { path: 'browser', element: <Navigate to="/explorer" replace /> },
           { path: 'privacyfun', element: <Navigate to="/p-fun" replace /> },
           { path: 'privacypay', element: <Navigate to="/assets?mode=transfer" replace /> },

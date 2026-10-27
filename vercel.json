@@ -53,6 +53,22 @@
       "destination": "/api/jubjub-proxy?route=refund"
     },
     {
+      "source": "/api/nft/pool/:pool",
+      "destination": "/api/nft-proxy?route=pool/:pool"
+    },
+    {
+      "source": "/api/nft/whitelist/check",
+      "destination": "/api/nft-proxy?route=whitelist/check"
+    },
+    {
+      "source": "/api/nft-media/collections/:hash/manifest.json",
+      "destination": "https://media.plabs.online/collections/:hash/manifest.json"
+    },
+    {
+      "source": "/api/nft-media/objects/:hash.webp",
+      "destination": "https://media.plabs.online/objects/:hash.webp"
+    },
+    {
       "source": "/((?!api/|assets/).*)",
       "destination": "/index.html"
     },

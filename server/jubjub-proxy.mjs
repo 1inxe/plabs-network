@@ -59,7 +59,7 @@ function verifyOrigin(req, trustForwardedProto) {
       throw new ProxyError(403, 'Request origin is not allowed.');
   }
 }
-function requestRoute(req, mode) {
+function requestRoute(req, mode, protocol) {
   const target = req.url ?? '';
   if (
     !target.startsWith('/') ||
@@ -88,23 +88,31 @@ function requestRoute(req, mode) {
     if (query.getAll('route').length !== 1)
       throw new ProxyError(400, 'Missing or duplicate API route.');
     route = query.get('route');
-    if (url.pathname !== '/api/jubjub-proxy' && url.pathname !== `/api/jubjub/${route}`)
+    if (url.pathname !== `/api/${protocol}-proxy` && url.pathname !== `/api/${protocol}/${route}`)
       throw new ProxyError(400, 'Invalid API function path.');
     query.delete('route');
   } else {
-    const prefix = '/api/jubjub/';
+    const prefix = `/api/${protocol}/`;
     if (!url.pathname.startsWith(prefix)) throw new ProxyError(404, 'Unknown JubJub API path.');
     route = url.pathname.slice(prefix.length);
     // Do not accept encoded or normalized aliases for an allowlisted path.
     if (target.split('?')[0] !== `${prefix}${route}`)
       throw new ProxyError(400, 'Invalid API path.');
   }
-  const method = methods.get(route);
+  const nft = protocol === 'nft';
+  const poolRoute = nft && /^pool\/0x[0-9a-f]{40}$/.test(route);
+  const method = nft
+    ? poolRoute
+      ? 'GET'
+      : route === 'whitelist/check'
+        ? 'POST'
+        : undefined
+    : methods.get(route);
   if (!method) throw new ProxyError(404, 'Unknown JubJub API path.');
   if (req.method !== method)
     throw new ProxyError(405, 'Method is not allowed for this JubJub endpoint.');
   const keys = [...query.keys()];
-  if (keys.length && (route !== 'history' || keys.length !== 1 || keys[0] !== 'after'))
+  if (keys.length && (nft || route !== 'history' || keys.length !== 1 || keys[0] !== 'after'))
     throw new ProxyError(400, 'Unsupported API query.');
   const after = query.get('after');
   if (
@@ -114,7 +122,11 @@ function requestRoute(req, mode) {
       !Number.isSafeInteger(Number(after)))
   )
     throw new ProxyError(400, 'Invalid history cursor.');
-  return { route, method, url: `${upstream}/${route}${after === null ? '' : `?after=${after}`}` };
+  return {
+    route,
+    method,
+    url: `${nft ? 'https://app.plabs.online/nft-intake/v1' : upstream}/${route}${after === null ? '' : `?after=${after}`}`,
+  };
 }
 async function readBody(req, maxBodyBytes, signal) {
   const declared = header(req, 'content-length');
@@ -215,6 +227,7 @@ function reply(res, status, body, requestId) {
 
 /** Fixed upstream protocol proxy. Never log request bodies or authorization. */
 export function createJubjubProxyHandler({
+  protocol = 'jubjub',
   transport = fetch,
   routeMode = 'path',
   trustForwardedProto = false,
@@ -222,6 +235,7 @@ export function createJubjubProxyHandler({
   maxBodyBytes = 16384,
   maxResponseBytes = 2_000_000,
 } = {}) {
+  if (!['jubjub', 'nft'].includes(protocol)) throw new Error('Unknown protocol proxy.');
   return async (req, res) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -229,7 +243,7 @@ export function createJubjubProxyHandler({
     req.once('aborted', abort);
     try {
       verifyOrigin(req, trustForwardedProto);
-      const target = requestRoute(req, routeMode);
+      const target = requestRoute(req, routeMode, protocol);
       const headers = { Accept: 'application/json' };
       const authorization = header(req, 'authorization');
       if (authorization && !/^Bearer [\x21-\x7e]{1,16384}$/i.test(authorization))
@@ -271,10 +285,10 @@ export function createJubjubProxyHandler({
       reply(res, status, {
         error:
           error instanceof ProxyError
-            ? error.message
+            ? error.message.replaceAll('JubJub', protocol === 'nft' ? 'NFT Launch' : 'JubJub')
             : status === 504
-              ? 'JubJub request timed out. Please retry.'
-              : 'JubJub could not be reached. Please retry.',
+              ? `${protocol === 'nft' ? 'NFT Launch' : 'JubJub'} request timed out. Please retry.`
+              : `${protocol === 'nft' ? 'NFT Launch' : 'JubJub'} could not be reached. Please retry.`,
       });
     } finally {
       clearTimeout(timer);

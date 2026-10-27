@@ -78,9 +78,13 @@ export function CollectiblesPage() {
         />
       </div>
       <Notice>
-        JubJub privacy bidding is now available.{' '}
+        Private NFT launches are now available.{' '}
+        <Link className="text-link" to="/privasea/launch">
+          Explore NFT Launch →
+        </Link>{' '}
+        or{' '}
         <Link className="text-link" to="/privasea/jubjub">
-          Open the P20 auction →
+          review the JubJub auction →
         </Link>{' '}
         You can also check your Genesis whitelist below.
       </Notice>

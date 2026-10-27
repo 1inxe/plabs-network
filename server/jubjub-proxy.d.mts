@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 export function createJubjubProxyHandler(options?: {
+  protocol?: 'jubjub' | 'nft';
   transport?: typeof fetch;
   routeMode?: 'path' | 'query';
   trustForwardedProto?: boolean;

@@ -15,6 +15,7 @@ const schema = z.object({
   VITE_ETHEREUM_API: apiBaseWithDefault('/api/ethereum'),
   VITE_PLATFORM_API: apiBaseWithDefault('/api/platform'),
   VITE_JUBJUB_API: apiBaseWithDefault('/api/jubjub'),
+  VITE_NFT_API: apiBaseWithDefault('/api/nft'),
 });
 export const env = schema.parse(import.meta.env);
 export const apiEndpoints = {
@@ -23,4 +24,5 @@ export const apiEndpoints = {
   ethereum: env.VITE_ETHEREUM_API,
   platform: env.VITE_PLATFORM_API,
   jubjub: env.VITE_JUBJUB_API,
+  nft: env.VITE_NFT_API,
 };

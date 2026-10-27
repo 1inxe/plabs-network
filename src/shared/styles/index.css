@@ -7,6 +7,7 @@
 @import './responsive.css';
 @import './notifications.css';
 @import './jubjub.css';
+@import './nft-launch.css';
 @theme {
   --font-sans: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;

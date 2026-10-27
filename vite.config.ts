@@ -9,6 +9,7 @@ const upstreams = {
   monad: 'https://monad-indexer.plabs.online',
   ethereum: 'https://eth-indexer.plabs.online',
   platform: 'https://api.plabs.online',
+  'nft-media': 'https://media.plabs.online',
 };
 const proxy = Object.fromEntries(
   Object.entries(upstreams).map(([name, target]) => [
@@ -26,16 +27,20 @@ const jubjubProxy: Plugin = {
   configureServer(server) {
     if (!jubjubProxyEnabled(server.config.server.proxy)) return;
     const handler = createJubjubProxyHandler();
+    const nft = createJubjubProxyHandler({ protocol: 'nft' });
     server.middlewares.use((req, res, next) => {
       if (/^\/api\/jubjub(?:\/|\?|$)/.test(req.url ?? '')) void handler(req, res);
+      else if (/^\/api\/nft(?:\/|\?|$)/.test(req.url ?? '')) void nft(req, res);
       else next();
     });
   },
   configurePreviewServer(server) {
     if (!jubjubProxyEnabled(server.config.preview.proxy)) return;
     const handler = createJubjubProxyHandler();
+    const nft = createJubjubProxyHandler({ protocol: 'nft' });
     server.middlewares.use((req, res, next) => {
       if (/^\/api\/jubjub(?:\/|\?|$)/.test(req.url ?? '')) void handler(req, res);
+      else if (/^\/api\/nft(?:\/|\?|$)/.test(req.url ?? '')) void nft(req, res);
       else next();
     });
   },

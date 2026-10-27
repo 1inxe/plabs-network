@@ -8,7 +8,12 @@ PLabs Network brings privacy asset management, PEX trading and on-chain activity
 - **PEX** — Explore markets and manage supported trading orders.
 - **Activity** — View wallet activity and transaction status.
 - **Explorer** — Browse public pool statistics and blockchain transactions.
+- **NFT Launch** — Browse Ethereum NFT drops, inspect live mint progress and verified artwork, and check your privacy wallet’s allocation at `/privasea/launch`. Minting, collection creation, the NFT market, and NFT holdings open their official PLabs pages.
 - **JubJub auction** — Follow the live P20 auction, authenticate your privacy identity, bid or raise your total, resume a pending payment, and check settlement at `/privasea/jubjub`.
+
+NFT allocation checks use a check-only privacy ownership proof from PLabs Wallet; they do not sign a mint or reserve a token. The current extension and published SDK do not expose the NFT mint proof and recovery protocol, so this app clearly labels the mint action **Mint on PLabs** and keeps the official flow in a separate tab. Use the same privacy wallet there. The auction’s sponsored P20 transfer is a different protocol and is not used for NFT minting.
+
+`VITE_NFT_API` defaults to `/api/nft`. Development, preview, Vercel, and Nginx expose only `GET pool/<address>` and `POST whitelist/check` from the fixed official NFT intake service. Artwork is fetched through `/api/nft-media`, checked against the on-chain manifest hash, and verified again against the image digest. The catalog reads the reviewed Ethereum market through public Ethereum RPC; no EVM write RPC is sent. See [NFT Launch integration notes](docs/nft-launch-research.md) for deployment details and verification limits.
 
 The auction page includes funded bidder counts, confirmed bid counts, seat demand, per-bidder averages, and 15-minute/hourly/all-time activity analysis. Public activity uses aggregate snapshot changes; bidder identities are not published. After sign-in, **My bid orders** shows each bid's total, additional payment, campaign status, and transaction links, with recovery for pending bids.
 
