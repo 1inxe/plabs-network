@@ -2,6 +2,7 @@ import type {
   DexOrderIntent,
   DexOrderSummary,
   DexOrders,
+  NftAssetSnapshot,
   NftMintRequest,
   NftMintResult,
   PlabsCapabilities,
@@ -20,6 +21,7 @@ export type {
   DexOrderIntent,
   DexOrderSummary,
   DexOrders,
+  NftAssetSnapshot,
   NftMintRequest,
   NftMintResult,
   PrivacyHistoryPage,
@@ -72,6 +74,7 @@ export interface WalletAdapter {
   mintNft?(request: NftMintRequest): Promise<NftMintResult>;
   resumeNftMint?(id: string): Promise<NftMintResult>;
   nftMints?(): Promise<NftMintResult[]>;
+  nftAssets?(options?: { sync?: boolean }): Promise<NftAssetSnapshot>;
   sendSponsoredTransaction?(
     request: SponsoredPrivacyTransactionRequest,
   ): Promise<SponsoredPrivacyTransactionResult>;

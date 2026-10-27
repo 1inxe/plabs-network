@@ -59,6 +59,36 @@ export const nftPoolSchema = z.object({
   bidCount: count,
   average: z.number().nonnegative().nullable(),
   auctionEnd: count.optional(),
+  snapshotBlock: z
+    .string()
+    .regex(/^0x[0-9a-f]+$/i)
+    .optional(),
+  snapshotBlockHash: hash.optional(),
+  mints: z
+    .array(
+      z.object({
+        tokenId: z
+          .string()
+          .max(78)
+          .regex(/^[1-9][0-9]*$/),
+        mintTxHash: hash,
+        mintCmx: hash.optional(),
+      }),
+    )
+    .max(100_000)
+    .default([]),
+  listings: z
+    .array(
+      z.object({
+        tokenId: z
+          .string()
+          .max(78)
+          .regex(/^[1-9][0-9]*$/),
+        price: z.string().regex(/^[0-9]+$/),
+      }),
+    )
+    .max(100_000)
+    .default([]),
 });
 export type NftPool = z.infer<typeof nftPoolSchema>;
 export type NftPhase = 'Upcoming' | 'Live' | 'Minted out' | 'Fully reserved' | 'Ended';
@@ -77,8 +107,11 @@ export function nftPhase(collection: NftCollection, pool?: NftPool, now = Date.n
     return 'Ended';
   return 'Live';
 }
-export const officialNftCollectionUrl = (pool: string) =>
-  `https://app.plabs.online/privasea/collection/${address.parse(pool)}`;
+export const nftCollectionPath = (pool: string, tokenId?: string) => {
+  address.parse(pool);
+  if (tokenId && !/^[1-9][0-9]*$/.test(tokenId)) throw new Error('Invalid NFT identity.');
+  return `/privasea/collection/${pool}${tokenId ? `/${tokenId}` : ''}`;
+};
 
 export function keccakBytes(bytes: Uint8Array): string {
   return `0x${Array.from(keccak_256(bytes), (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
@@ -118,8 +151,10 @@ export async function loadNftCatalog(
   signal: AbortSignal,
   offset = 0,
   transport: Transport = fetch,
+  requestedPool?: string,
 ) {
   count.parse(offset);
+  if (requestedPool) address.parse(requestedPool);
   let endpoint = '';
   const rpc = async (url: string, method: string, params: unknown[]) => {
     signal.throwIfAborted();
@@ -151,14 +186,21 @@ export async function loadNftCatalog(
   const block = await rpc(endpoint, 'eth_blockNumber', []);
   const call = async (to: string, data: string) =>
     hex.parse(await rpc(endpoint, 'eth_call', [{ to, data }, block]));
-  const total = integer(word(await call(NFT_MARKET, selector('poolCount()')), 0));
+  const total = requestedPool
+    ? 1
+    : integer(word(await call(NFT_MARKET, selector('poolCount()')), 0));
   if (total > 100_000) throw new Error('The NFT catalog exceeds the supported size.');
   const collections: NftCollection[] = [];
   for (let i = offset; i < Math.min(total, offset + NFT_PAGE_SIZE); i++) {
-    const pool = contractAddress(
-      await call(NFT_MARKET, selector('pools(uint256)') + BigInt(i).toString(16).padStart(64, '0')),
-      0,
-    );
+    const pool =
+      requestedPool ??
+      contractAddress(
+        await call(
+          NFT_MARKET,
+          selector('pools(uint256)') + BigInt(i).toString(16).padStart(64, '0'),
+        ),
+        0,
+      );
     if (BigInt(pool) === 0n) throw new Error('The NFT catalog contains an invalid collection.');
     const encodedPool = pool.slice(2).padStart(64, '0');
     const [launch, name, symbol, metadataURI, metadataHash] = await Promise.all([
@@ -171,6 +213,8 @@ export async function loadNftCatalog(
     signal.throwIfAborted();
     const saleKind = saleKinds[integer(word(launch, 1))];
     if (!saleKind) throw new Error('The NFT collection uses an unsupported sale type.');
+    if (BigInt(contractAddress(launch, 0)) === 0n)
+      throw new Error('Collection not found in the Ethereum market.');
     const collection: NftCollection = {
       pool,
       creator: contractAddress(launch, 0),
@@ -184,7 +228,11 @@ export async function loadNftCatalog(
       supply: integer(word(launch, 10)),
       minted: integer(word(launch, 11)),
     };
-    if (collection.supply < 1 || collection.minted > collection.supply)
+    if (
+      collection.supply < 1 ||
+      collection.supply > 100_000 ||
+      collection.minted > collection.supply
+    )
       throw new Error('Invalid NFT supply.');
     if (metadataURI && metadataHash && hash.safeParse(metadataHash).success) {
       const uri = contractText(metadataURI);
@@ -195,7 +243,12 @@ export async function loadNftCatalog(
     }
     collections.push(collection);
   }
-  return { collections, total, block };
+  // Keep the full chain count for cursor pagination; retired test drops are not production launches.
+  return {
+    collections: collections.filter((collection) => !retiredPools.has(collection.pool)),
+    total,
+    block,
+  };
 }
 
 const mediaHash = z.string().regex(/^[0-9a-f]{64}$/);
@@ -213,7 +266,13 @@ const manifestSchema = z.object({
     symbol: z.string().max(20),
     description: z.string().max(10000).optional(),
   }),
-  tokens: z.record(z.string().regex(/^[1-9][0-9]*$/), manifestEntry),
+  tokens: z.record(
+    z
+      .string()
+      .max(78)
+      .regex(/^[1-9][0-9]*$/),
+    manifestEntry,
+  ),
 });
 export async function sha256Hex(data: ArrayBuffer): Promise<string> {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', data)), (byte) =>
@@ -254,7 +313,7 @@ async function boundedMedia(
   signal.throwIfAborted();
   return data.buffer;
 }
-export async function loadNftArtwork(
+export async function loadNftManifest(
   collection: NftCollection,
   signal: AbortSignal,
   transport: Transport = fetch,
@@ -270,11 +329,19 @@ export async function loadNftArtwork(
   if (
     manifest.creator !== collection.creator ||
     Object.keys(manifest.tokens).length !== collection.supply ||
+    Object.keys(manifest.tokens).some((id) => BigInt(id) > BigInt(collection.supply)) ||
     manifest.collection.name !== collection.name ||
     manifest.collection.symbol !== collection.symbol
   )
     throw new Error('Collection metadata does not match the contract.');
-  const cover = manifest.collection;
+  return manifest;
+}
+export type NftManifest = Awaited<ReturnType<typeof loadNftManifest>>;
+export async function loadNftImage(
+  cover: NftManifest['collection'] | NftManifest['tokens'][string],
+  signal: AbortSignal,
+  transport: Transport = fetch,
+) {
   const expectedUrl = `${NFT_MEDIA_ORIGIN}/objects/${cover.thumbnail_sha256}.webp`;
   if (cover.thumbnail !== expectedUrl) throw new Error('Invalid collection artwork commitment.');
   const image = await boundedMedia(expectedUrl, signal, 2_000_000, transport);
@@ -282,8 +349,111 @@ export async function loadNftArtwork(
     throw new Error('Collection artwork failed verification.');
   return {
     image: new Blob([image], { type: 'image/webp' }),
+  };
+}
+
+export async function loadNftArtwork(
+  collection: NftCollection,
+  signal: AbortSignal,
+  transport: Transport = fetch,
+) {
+  const manifest = await loadNftManifest(collection, signal, transport);
+  return {
+    ...(await loadNftImage(manifest.collection, signal, transport)),
     description: manifest.collection.description ?? '',
   };
+}
+export async function loadNftCollection(
+  pool: string,
+  signal: AbortSignal,
+  transport: Transport = fetch,
+) {
+  const collection = (await loadNftCatalog(signal, 0, transport, address.parse(pool.toLowerCase())))
+    .collections[0];
+  if (!collection) throw new Error('Collection not found.');
+  return collection;
+}
+
+/** Read issued identities, including gaps, from one canonical Ethereum block. */
+export async function loadNftIssued(
+  collection: NftCollection,
+  signal: AbortSignal,
+  transport: Transport = fetch,
+) {
+  address.parse(collection.pool);
+  if (
+    !Number.isSafeInteger(collection.supply) ||
+    collection.supply < 1 ||
+    collection.supply > 100_000
+  )
+    throw new Error('Unsupported NFT edition size.');
+  const rpc = async (url: string, method: string, params: unknown[]) => {
+    signal.throwIfAborted();
+    const response = await transport(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(12000)]),
+      credentials: 'omit',
+      redirect: 'error',
+    });
+    if (!response.ok) throw new Error('Ethereum mint status is unavailable.');
+    const body = z.object({ id: z.literal(1), result: z.unknown() }).parse(await response.json());
+    return body.result;
+  };
+  let endpoint = '';
+  for (const url of rpcEndpoints) {
+    try {
+      if ((await rpc(url, 'eth_chainId', [])) === '0x1') {
+        endpoint = url;
+        break;
+      }
+    } catch {
+      signal.throwIfAborted();
+    }
+  }
+  if (!endpoint) throw new Error('Ethereum mint status is unavailable.');
+  const header = z.object({ number: z.string().regex(/^0x[0-9a-f]+$/i), hash });
+  const block = header.parse(await rpc(endpoint, 'eth_getBlockByNumber', ['latest', false]));
+  const tokenIds: string[] = [];
+  // Bound concurrent reads for RPCs that limit batch sizes.
+  for (let start = 1; start <= collection.supply; start += 1024) {
+    const batches = await Promise.all(
+      Array.from(
+        { length: Math.min(4, Math.ceil((collection.supply - start + 1) / 256)) },
+        async (_, index) => {
+          const first = start + index * 256,
+            size = Math.min(256, collection.supply - first + 1);
+          const data =
+            selector('issuedTokenIds(uint256,uint256)') +
+            BigInt(first).toString(16).padStart(64, '0') +
+            BigInt(size).toString(16).padStart(64, '0');
+          const result = hex
+            .max(130 + size * 64)
+            .parse(await rpc(endpoint, 'eth_call', [{ to: collection.pool, data }, block.number]));
+          const length = integer(word(result, 1));
+          if (word(result, 0) !== 32n || length > size || result.length !== 130 + length * 64)
+            throw new Error('Incomplete NFT mint status.');
+          let previous = BigInt(first - 1);
+          return Array.from({ length }, (_, i) => {
+            const id = word(result, i + 2);
+            if (id <= previous || id >= BigInt(first + size))
+              throw new Error('Invalid NFT mint identity.');
+            previous = id;
+            return id.toString();
+          });
+        },
+      ),
+    );
+    tokenIds.push(...batches.flat());
+  }
+  const canonical = header.parse(
+    await rpc(endpoint, 'eth_getBlockByNumber', [block.number, false]),
+  );
+  signal.throwIfAborted();
+  if (canonical.number !== block.number || canonical.hash !== block.hash)
+    throw new Error('Ethereum changed while checking NFT identities. Retry mint status.');
+  return { tokenIds, block: block.number, blockHash: block.hash };
 }
 
 export function createNftLaunchService(baseUrl: string, transport: Transport = fetch) {
@@ -294,6 +464,13 @@ export function createNftLaunchService(baseUrl: string, transport: Transport = f
       if (result.pool !== pool) throw new Error('NFT status belongs to a different collection.');
       if (result.minted > result.supply || result.remaining > result.supply)
         throw new Error('Invalid NFT mint progress.');
+      for (const rows of [result.mints, result.listings]) {
+        if (
+          new Set(rows.map((row) => row.tokenId)).size !== rows.length ||
+          rows.some((row) => BigInt(row.tokenId) > BigInt(result.supply))
+        )
+          throw new Error('Invalid NFT item identities.');
+      }
       return result;
     },
     async checkAllocation({

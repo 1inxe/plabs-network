@@ -10,6 +10,8 @@ const Explorer = lazy(() => import('@/features/explorer'));
 const History = lazy(() => import('@/features/history'));
 const Collectibles = lazy(() => import('@/features/collectibles'));
 const Jubjub = lazy(() => import('@/features/jubjub'));
+const NftCollection = lazy(() => import('@/features/nft-launch/NftCollectionPage'));
+const NftHub = lazy(() => import('@/features/nft-launch/NftHubPage'));
 const NftLaunch = lazy(() => import('@/features/nft-launch'));
 const Ecosystem = lazy(() => import('@/features/ecosystem'));
 export const router = createBrowserRouter([
@@ -29,17 +31,22 @@ export const router = createBrowserRouter([
           { path: 'assets', element: <Gateway /> },
           { path: 'shield', element: <Navigate to="/assets?mode=deposit" replace /> },
           { path: 'privacyfi', element: <Navigate to="/assets" replace /> },
-          { path: 'privasea/whitelist', element: <Navigate to="/p-sea" replace /> },
+          { path: 'privasea/whitelist', element: <Collectibles /> },
           { path: 'privasea/jubjub', element: <Jubjub /> },
           { path: 'privasea/launch', element: <NftLaunch /> },
           { path: 'p-sea/launch', element: <Navigate to="/privasea/launch" replace /> },
-          { path: 'privasea', element: <Navigate to="/privasea/launch" replace /> },
+          { path: 'privasea', element: <NftHub /> },
+          { path: 'privasea/market', element: <NftHub /> },
+          { path: 'privasea/create', element: <NftHub /> },
+          { path: 'privasea/profile', element: <NftHub /> },
+          { path: 'privasea/collection/:pool', element: <NftCollection /> },
+          { path: 'privasea/collection/:pool/:tokenId', element: <NftCollection /> },
           { path: 'browser', element: <Navigate to="/explorer" replace /> },
           { path: 'privacyfun', element: <Navigate to="/p-fun" replace /> },
           { path: 'privacypay', element: <Navigate to="/assets?mode=transfer" replace /> },
           { path: 'pay', element: <Navigate to="/assets?mode=transfer" replace /> },
           { path: 'pex', element: <Trading /> },
-          { path: 'p-sea', element: <Collectibles /> },
+          { path: 'p-sea', element: <Navigate to="/privasea/whitelist" replace /> },
           { path: 'explorer', element: <Explorer /> },
           { path: 'history', element: <History /> },
           { path: 'p-fun', element: <Ecosystem /> },

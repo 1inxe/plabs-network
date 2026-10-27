@@ -30,7 +30,7 @@
     "lightweight-charts": "^5.0.9",
     "lucide-react": "^0.468.0",
     "motion": "^12.23.24",
-    "plabs-js-sdk": "0.3.0",
+    "plabs-js-sdk": "0.3.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-hook-form": "^7.63.0",

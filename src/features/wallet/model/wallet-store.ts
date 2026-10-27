@@ -369,7 +369,7 @@ export class WalletStore {
             'Update PLabs Wallet to version 0.8.0, reload the extension in your browser, then refresh this page. The connected extension does not support balance and history access.',
           );
         this.patch({ readAuthorization: 'waiting' });
-        const session = await adapter.requestAccess(SITE_READ_SCOPES);
+        const session = await adapter.requestAccess([...new Set([...SITE_READ_SCOPES, ...scopes])]);
         if (revision !== this.revision)
           throw new Error('The privacy session changed while authorizing. Please authorize again.');
         if (

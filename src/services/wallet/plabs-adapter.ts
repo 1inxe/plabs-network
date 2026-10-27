@@ -5,6 +5,7 @@ import type { WalletAdapter } from './types';
 export function createPlabsAdapter(provider: PlabsProvider): WalletAdapter {
   const sdk = createPlabsWallet(provider);
   return {
+    nftAssets: (options) => sdk.privacy.getNftAssets(options),
     mintNft: (request) => sdk.privacy.mintNft(request),
     resumeNftMint: (id) => sdk.privacy.resumeNftMint(id),
     nftMints: () => walletReadTimeout(sdk.privacy.getNftMints()),

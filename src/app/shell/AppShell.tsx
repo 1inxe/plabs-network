@@ -27,7 +27,7 @@ const nav = [
   { to: '/pex', label: 'Trade', icon: ChartCandlestick, badge: 'Spot' },
   { to: '/history', label: 'Activity', icon: History },
   { to: '/explorer', label: 'Explorer', icon: ScanSearch },
-  { to: '/p-sea', label: 'NFT gallery', icon: Gem, section: 'DISCOVER', badge: 'Check' },
+  { to: '/privasea', label: 'PrivaSea', icon: Gem, section: 'DISCOVER', badge: 'NFTs' },
   { to: '/privasea/launch', label: 'NFT Launch', icon: Rocket, badge: 'New' },
   { to: '/privasea/jubjub', label: 'JubJub auction', icon: Gavel, badge: 'P20' },
   {

@@ -127,8 +127,8 @@ export function TradingAccount({ config }: { config: MarketConfig }) {
           )}
           {w.dexOrders?.needsImport && (
             <Notice>
-              Open app.plabs.online with the same privacy account, then approve importing its order
-              references in your wallet. Connecting an address alone cannot discover private orders.
+              Import existing order references in your wallet to view them here. Connecting an
+              address alone cannot discover private orders.
             </Notice>
           )}
 

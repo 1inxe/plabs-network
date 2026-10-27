@@ -8,8 +8,7 @@ is used, no signatures are produced, and no requests reach the production API.
 Verify each entry independently:
 
 1. Click the hero's **Check whitelist** button. The result must appear directly under the NFT image, without a dialog.
-2. Select **The collection**, and click **Check your eligibility** at the
-   bottom. It must switch to Genesis and show the inline result, not merely scroll.
+2. Follow **Whitelist** from the local PrivaSea navigation. The qualification check and result remain on this site.
 3. Click **Check again** in the card. It must query again.
 4. Open `/p-sea?locked`, then click **Unlock and check whitelist** once. After the
    mock privacy authorization, the query must continue without a second click.
@@ -117,3 +116,7 @@ participant's current bid after later increases.
 Screenshots include desktop confirmation, desktop refund, mobile sign-in, live
 analysis, private orders, mobile analysis with populated orders, complete/partial
 first-bid distributions, and the seven bands on mobile.
+
+# Native NFT pages
+
+Run `node tests/browser/nft-launch-regression.mjs`. The 14 scenarios include native Home/Launch/Market/Create/Profile navigation, direct collection/item reloads, item pagination/back state, nonsequential issued IDs, stale index/chain failures, mobile layouts, separate NFT consent, received assets, account changes, delayed reads, allocation checks and mint/resume recovery. All wallet responses and financial actions are synthetic. Screenshots are written to the system temporary artifact directory printed by the runner.

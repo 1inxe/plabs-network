@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ArrowUpRight, Clock3, Fingerprint, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { PrivaSeaNav } from '@/features/nft-launch/PrivaSeaNav';
 import { useWallet } from '@/features/wallet';
 import {
   createJubjubService,
@@ -435,13 +436,14 @@ function Auction({ wallet }: { wallet: ReturnType<typeof useWallet> }) {
   };
   return (
     <div className="page jubjub-page">
+      <PrivaSeaNav />
       <div className="jubjub-breadcrumb">
         <Link to="/p-sea">
           <ArrowLeft size={14} /> NFT gallery
         </Link>
-        <a href="https://app.plabs.online/privasea/jubjub" target="_blank" rel="noreferrer">
-          Official auction <ArrowUpRight size={14} />
-        </a>
+        <Link to="/privasea/launch">
+          NFT Launch <ArrowUpRight size={14} />
+        </Link>
       </div>
       <div className="jubjub-heading">
         <div>

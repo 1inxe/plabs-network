@@ -4,19 +4,19 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   createNftLaunchService,
-  loadNftArtwork,
   loadNftCatalog,
   NFT_PAGE_SIZE,
   type NftCollection,
+  nftCollectionPath,
   nftPhase,
-  officialNftCollectionUrl,
 } from '@/services/platform/nft-launch';
 import { errorMessage } from '@/shared/api/errors';
 import { apiEndpoints } from '@/shared/config/env';
-import { short } from '@/shared/lib/format';
-import { Badge, EmptyState, Modal, PageHeading } from '@/shared/ui';
+import { Badge, EmptyState, PageHeading } from '@/shared/ui';
 import { AllocationCheck } from './AllocationCheck';
 import { MintPanel } from './MintPanel';
+import { NftArtwork as Artwork } from './NftArtwork';
+import { PrivaSeaNav } from './PrivaSeaNav';
 
 const service = createNftLaunchService(apiEndpoints.nft);
 const sales = {
@@ -25,31 +25,7 @@ const sales = {
   english: 'English auction',
   privacy: 'Privacy auction',
 };
-function Artwork({ collection }: { collection: NftCollection }) {
-  const artwork = useQuery({
-    queryKey: ['nft', 'artwork', collection.pool, collection.metadataManifestHash],
-    queryFn: ({ signal }) => loadNftArtwork(collection, signal),
-    staleTime: Number.POSITIVE_INFINITY,
-    retry: false,
-  });
-  const [url, setUrl] = useState('');
-  useEffect(() => {
-    if (!artwork.data) return;
-    const objectUrl = URL.createObjectURL(artwork.data.image);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [artwork.data]);
-  return url ? (
-    <img src={url} alt={`${collection.name} collection artwork`} />
-  ) : (
-    <div className="nft-launch-placeholder">
-      <Gem aria-hidden="true" size={42} />
-      <span>{artwork.isPending ? 'Loading artwork…' : 'Artwork unavailable'}</span>
-    </div>
-  );
-}
 function CollectionCard({ collection, now }: { collection: NftCollection; now: number }) {
-  const [details, setDetails] = useState(false);
   const [allocationRevision, setAllocationRevision] = useState(0);
   const mintChanged = useCallback(() => setAllocationRevision((value) => value + 1), []);
   const status = useQuery({
@@ -69,10 +45,9 @@ function CollectionCard({ collection, now }: { collection: NftCollection; now: n
     : '';
   return (
     <article className="nft-launch-card">
-      <button
-        type="button"
+      <Link
+        to={nftCollectionPath(collection.pool)}
         className="nft-launch-art"
-        onClick={() => setDetails(true)}
         aria-label={`View ${collection.name}`}
       >
         <Artwork collection={collection} />
@@ -83,13 +58,11 @@ function CollectionCard({ collection, now }: { collection: NftCollection; now: n
         <span className="nft-launch-art-bottom">
           {collection.symbol} <span>pERC721 / ETHEREUM</span>
         </span>
-      </button>
+      </Link>
       <div className="nft-launch-card-body">
         <div className="nft-launch-title">
           <h2>
-            <button type="button" onClick={() => setDetails(true)}>
-              {collection.name}
-            </button>
+            <Link to={nftCollectionPath(collection.pool)}>{collection.name}</Link>
           </h2>
           <Badge tone="gray">{sales[collection.saleKind]}</Badge>
         </div>
@@ -140,85 +113,10 @@ function CollectionCard({ collection, now }: { collection: NftCollection; now: n
         {collection.saleKind === 'free' && (
           <MintPanel pool={collection.pool} canMint={live} onChanged={mintChanged} />
         )}
-        <a
-          className="text-link"
-          href={officialNftCollectionUrl(collection.pool)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {collection.saleKind === 'free'
-            ? 'View on PLabs'
-            : live
-              ? collection.saleKind === 'fixed'
-                ? 'Mint on PLabs'
-                : 'Bid on PLabs'
-              : 'View on PLabs'}
-          <ArrowUpRight aria-hidden="true" size={15} />
-        </a>
-        {live && collection.saleKind !== 'free' && (
-          <p className="nft-launch-handoff">Continue in PLabs with the same privacy wallet.</p>
-        )}
+        <Link className="text-link" to={nftCollectionPath(collection.pool)}>
+          View collection <ArrowRight size={15} aria-hidden="true" />
+        </Link>
       </div>
-      <Modal
-        open={details}
-        onOpenChange={setDetails}
-        title={collection.name}
-        description={`${sales[collection.saleKind]} · Private NFT collection on Ethereum`}
-      >
-        <div className="nft-launch-detail-art">
-          <Artwork collection={collection} />
-        </div>
-        <dl className="nft-launch-facts">
-          <div>
-            <dt>Symbol</dt>
-            <dd>{collection.symbol}</dd>
-          </div>
-          <div>
-            <dt>Sale</dt>
-            <dd>{sales[collection.saleKind]}</dd>
-          </div>
-          <div>
-            <dt>Minted</dt>
-            <dd>
-              {minted} / {supply}
-            </dd>
-          </div>
-          <div>
-            <dt>Creator</dt>
-            <dd>
-              <a
-                className="text-link mono"
-                href={`https://etherscan.io/address/${collection.creator}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {short(collection.creator)} ↗
-              </a>
-            </dd>
-          </div>
-          <div>
-            <dt>Collection</dt>
-            <dd>
-              <a
-                className="text-link mono"
-                href={`https://etherscan.io/address/${collection.pool}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {short(collection.pool)} ↗
-              </a>
-            </dd>
-          </div>
-        </dl>
-        <a
-          className="primary-button"
-          href={officialNftCollectionUrl(collection.pool)}
-          target="_blank"
-          rel="noreferrer"
-        >
-          Open collection on PLabs <ArrowUpRight aria-hidden="true" size={15} />
-        </a>
-      </Modal>
     </article>
   );
 }
@@ -246,26 +144,7 @@ export function NftLaunchPage() {
     ) ?? [];
   return (
     <div className="page nft-launch-page">
-      <div className="sea-navigation">
-        <div className="sea-wordmark">
-          <Gem aria-hidden="true" size={22} />
-          PrivaSea <span>PRIVATE NFTS</span>
-        </div>
-        <Badge tone="green">NFT LAUNCH</Badge>
-      </div>
-      <nav className="nft-launch-navigation" aria-label="PrivaSea navigation">
-        <Link to="/p-sea">Genesis whitelist</Link>
-        <Link to="/privasea/jubjub">JubJub auction</Link>
-        <a href="https://app.plabs.online/privasea/market" target="_blank" rel="noreferrer">
-          NFT market <ArrowUpRight aria-hidden="true" size={12} />
-        </a>
-        <a href="https://app.plabs.online/privasea/create" target="_blank" rel="noreferrer">
-          Create collection <ArrowUpRight aria-hidden="true" size={12} />
-        </a>
-        <a href="https://app.plabs.online/privasea/profile" target="_blank" rel="noreferrer">
-          My NFTs <ArrowUpRight aria-hidden="true" size={12} />
-        </a>
-      </nav>
+      <PrivaSeaNav />
       <PageHeading
         eyebrow="NFT LAUNCH / ETHEREUM"
         title="A new chapter in private ownership."
@@ -288,7 +167,7 @@ export function NftLaunchPage() {
           <strong>All launches</strong>
           <span>
             {catalog.data
-              ? `${catalog.data.total} ${catalog.data.total === 1 ? 'collection' : 'collections'}`
+              ? `${collections.length} ${collections.length === 1 ? 'collection' : 'collections'} on this page`
               : 'Reading on-chain catalog'}
           </span>
         </div>

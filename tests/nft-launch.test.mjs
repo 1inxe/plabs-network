@@ -290,3 +290,72 @@ test('artwork verifies manifest commitment, collection scope and image bytes bef
     /failed verification/,
   );
 });
+
+test('collection deep links read their pool directly without depending on a cached catalog', async () => {
+  const { loadNftCollection, nftCollectionPath } = await import(
+    '../src/services/platform/nft-launch.ts'
+  );
+  const fixture = catalogTransport();
+  const collection = await loadNftCollection(pool, new AbortController().signal, fixture.transport);
+  assert.equal(collection.pool, pool);
+  assert.equal(
+    fixture.calls.some(
+      (call) =>
+        call.method === 'eth_call' &&
+        [sig('poolCount()'), sig('pools(uint256)')].includes(call.params[0].data.slice(0, 10)),
+    ),
+    false,
+  );
+  assert.equal(nftCollectionPath(pool, '3'), `/privasea/collection/${pool}/3`);
+  assert.throws(() => nftCollectionPath(pool, '../market'));
+  const unregistered = catalogTransport({
+    'launches(address)': `0x${[0, 0, 0, 0, 1700000000, 0, 0, 0, 1, 0, 5, 2].map(uint).join('')}`,
+  });
+  await assert.rejects(
+    loadNftCollection(pool, new AbortController().signal, unregistered.transport),
+    /not found/,
+  );
+});
+
+test('issued identities keep gaps and every chunk is pinned to a canonical block', async () => {
+  const { loadNftIssued } = await import('../src/services/platform/nft-launch.ts');
+  const block = '0x123456',
+    blockHash = `0x${'ab'.repeat(32)}`,
+    calls = [];
+  const read = async (_url, init) => {
+    const request = JSON.parse(init.body);
+    calls.push(request);
+    if (request.method === 'eth_chainId') return Response.json({ id: 1, result: '0x1' });
+    if (request.method === 'eth_getBlockByNumber')
+      return Response.json({ id: 1, result: { number: block, hash: blockHash } });
+    const data = request.params[0].data;
+    const first = Number(BigInt(`0x${data.slice(10, 74)}`)),
+      size = Number(BigInt(`0x${data.slice(74, 138)}`));
+    const ids = [1, 3, 257, 600].filter((id) => id >= first && id < first + size);
+    return Response.json({ id: 1, result: `0x${[32, ids.length, ...ids].map(uint).join('')}` });
+  };
+  const result = await loadNftIssued({ pool, supply: 600 }, new AbortController().signal, read);
+  assert.deepEqual(result.tokenIds, ['1', '3', '257', '600']);
+  const reads = calls.filter((call) => call.method === 'eth_call');
+  assert.equal(reads.length, 3);
+  assert.ok(reads.every((call) => call.params[1] === block));
+  let headers = 0;
+  const reorg = async (url, init) => {
+    const request = JSON.parse(init.body);
+    if (request.method === 'eth_getBlockByNumber' && ++headers === 2)
+      return Response.json({ id: 1, result: { number: block, hash: `0x${'cd'.repeat(32)}` } });
+    return read(url, init);
+  };
+  await assert.rejects(
+    loadNftIssued({ pool, supply: 600 }, new AbortController().signal, reorg),
+    /Ethereum changed/,
+  );
+  const duplicates = async (url, init) =>
+    JSON.parse(init.body).method === 'eth_call'
+      ? Response.json({ id: 1, result: `0x${[32, 2, 1, 1].map(uint).join('')}` })
+      : read(url, init);
+  await assert.rejects(
+    loadNftIssued({ pool, supply: 5 }, new AbortController().signal, duplicates),
+    /Invalid NFT mint identity/,
+  );
+});

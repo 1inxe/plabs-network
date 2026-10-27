@@ -124,9 +124,7 @@ never summed into ERC20 balances. The existing automatic-sync preference is
 respected while the unlocked wallet view is open, and a manual sync control is
 provided. Failed scans preserve cached assets with incomplete-coverage feedback.
 
-Paid mints, auctions, collection creation, the official marketplace and official
-profile remain explicit external links. NFT transfer submission is not included
-in this change. Users of earlier extensions see update/reload guidance.
+The native reconstruction now replaces all original-app navigation with local routes; see [PrivaSea reconstruction](privasea-native.md). Collection and item details, profile holdings, Home and market discovery are local. The production protocol disables secondary trading and public creation, so those routes show their actual availability. Paid mint and NFT transfer submission remain unsupported by the wallet. Earlier extensions see update/reload guidance.
 
 ## Deployment and verification
 

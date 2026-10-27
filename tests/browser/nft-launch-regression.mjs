@@ -112,6 +112,28 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
   const context = await browser.newContext({ viewport });
   const page = await context.newPage();
   page.setDefaultTimeout(12000);
+  const editionCount = scenario === 'pages' ? 49 : 5;
+  const activeManifest =
+    editionCount === 5
+      ? manifest
+      : Buffer.from(
+          JSON.stringify({
+            chainId: 1,
+            creator,
+            collection: entry,
+            tokens: Object.fromEntries(
+              Array.from({ length: editionCount }, (_, i) => [String(i + 1), entry]),
+            ),
+          }),
+        );
+  const activeCommitment = digest(activeManifest);
+  const activeReplies = {
+    ...replies,
+    [sig('launches(address)')]:
+      `0x${[creator, 0, 0, 0, 1700000000, 0, 0, 0, 1, 0, editionCount, 2].map(uint).join('')}`,
+    [sig('metadataBaseURI()')]: text(`https://media.plabs.online/collections/${activeCommitment}`),
+    [sig('metadataManifestHash()')]: `0x${activeCommitment}`,
+  };
   const calls = [],
     errors = [],
     external = [];
@@ -174,6 +196,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
                   privacyOwnership: true,
                   personalSign: true,
                   nftMinting: scenario.startsWith('mint'),
+                  nftAssets: scenario.startsWith('profile'),
                 },
                 networks: [
                   { chainId: 1, name: 'Ethereum', nativeSymbol: 'ETH', pools: [] },
@@ -183,6 +206,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             case 'plabs_getPrivacySession':
               return privacy();
             case 'plabs_requestPrivacyAccess':
+              for (const scope of params[0].scopes) if (!scopes.includes(scope)) scopes.push(scope);
               unlocked = true;
               return privacy();
             case 'plabs_getPrivacyAddress':
@@ -198,6 +222,27 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             case 'plabs_getHistory':
             case 'plabs_getNotes':
               return { items: [], page: 1, pageSize: 20, total: 0, pages: 1 };
+            case 'plabs_getNftAssets':
+              if (!scopes.includes('nfts')) throw new Error('NFT consent is required');
+              if (scenario === 'profile-race') await pending;
+              return {
+                chainId: 1,
+                items:
+                  evm === account
+                    ? [
+                        {
+                          id: 'synthetic-received',
+                          poolAddress: pool,
+                          name: 'Fixture birds',
+                          symbol: 'BIRD',
+                          tokenId: '3',
+                          state: 'confirmed',
+                        },
+                      ]
+                    : [],
+                syncedAt: Date.now(),
+                syncComplete: true,
+              };
             case 'plabs_getNftMints':
               return evm === account ? mints : [];
             case 'plabs_mintNft': {
@@ -267,6 +312,18 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
     if (['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'].includes(url.origin)) {
       const call = req.postDataJSON();
       calls.push(call);
+      if (call.method === 'eth_getBlockByNumber')
+        return fulfill({ id: 1, result: { number: '0x123456', hash: `0x${'ab'.repeat(32)}` } });
+      if (
+        call.method === 'eth_call' &&
+        call.params[0].data.startsWith(sig('issuedTokenIds(uint256,uint256)'))
+      ) {
+        if (scenario === 'stale-index') return fulfill({ error: 'synthetic chain outage' }, 503);
+        const first = Number(BigInt(`0x${call.params[0].data.slice(10, 74)}`)),
+          size = Number(BigInt(`0x${call.params[0].data.slice(74, 138)}`));
+        const ids = [1, 3].filter((id) => id >= first && id < first + size);
+        return fulfill({ id: 1, result: `0x${[32, ids.length, ...ids].map(uint).join('')}` });
+      }
       return fulfill({
         id: 1,
         result:
@@ -274,7 +331,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
             ? '0x1'
             : call.method === 'eth_blockNumber'
               ? '0x123456'
-              : replies[call.params[0].data.slice(0, 10)],
+              : activeReplies[call.params[0].data.slice(0, 10)],
       });
     }
     if (url.origin !== origin) {
@@ -283,7 +340,7 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
     }
     if (url.pathname.startsWith('/api/nft-media/'))
       return fulfill(
-        url.pathname.endsWith('manifest.json') ? manifest : image,
+        url.pathname.endsWith('manifest.json') ? activeManifest : image,
         200,
         url.pathname.endsWith('manifest.json') ? 'application/json' : 'image/png',
       );
@@ -293,15 +350,24 @@ async function run(name, scenario, check, viewport = { width: 1440, height: 1100
           ? { error: 'synthetic outage' }
           : {
               pool,
-              supply: 5,
+              supply: editionCount,
               minted,
               reserved: 0,
-              remaining: 5 - minted,
+              remaining: editionCount - minted,
               soldOut: minted === 5,
               primaryOpen: true,
               registered: true,
               asOf: Date.now(),
-              stale: false,
+              stale: scenario === 'stale-index',
+              mints: [
+                {
+                  tokenId: '1',
+                  mintTxHash: `0x${'ab'.repeat(32)}`,
+                  mintCmx: `0x${'cd'.repeat(32)}`,
+                },
+                { tokenId: '3', mintTxHash: `0x${'ef'.repeat(32)}` },
+              ],
+              listings: [],
               whitelist: {
                 ...allocation,
                 connected: false,
@@ -381,18 +447,149 @@ try {
     );
     assert.equal(calls.filter((c) => c.check).length, 1);
     await page.screenshot({ path: join(artifactDir, 'allocation-desktop.png'), fullPage: true });
-    await page.getByRole('button', { name: 'View Fixture birds', exact: true }).click();
-    await page.getByRole('dialog', { name: 'Fixture birds' }).waitFor();
-    await page.getByRole('button', { name: 'Close dialog' }).click();
+    await page.getByRole('link', { name: 'View Fixture birds', exact: true }).click();
+    await page.getByRole('heading', { name: 'Fixture birds', level: 1 }).waitFor();
+    await page.getByRole('link', { name: 'All launches', exact: true }).click();
     await page.getByRole('searchbox', { name: 'Search NFT collections' }).fill('missing');
     await page.getByRole('heading', { name: 'No matching collections' }).waitFor();
     await page.getByRole('searchbox', { name: 'Search NFT collections' }).fill('BIRD');
     await page.getByRole('heading', { name: 'Fixture birds', exact: true }).waitFor();
     assert.equal(
-      await page.getByRole('link', { name: 'View on PLabs', exact: true }).getAttribute('href'),
-      `https://app.plabs.online/privasea/collection/${pool}`,
+      await page.getByRole('link', { name: 'View collection', exact: true }).getAttribute('href'),
+      `/privasea/collection/${pool}`,
     );
   });
+  await run('native-collection-and-item-deep-links', 'normal', async (page, { calls }) => {
+    await page.goto(`${origin}/privasea/collection/${pool}`);
+    await page.getByRole('heading', { name: 'Fixture birds', level: 1 }).waitFor();
+    const items = page.getByRole('region', { name: 'Collection items' });
+    await items.locator('.nft-item-card').getByText('Unminted', { exact: true }).first().waitFor();
+    assert.equal(await items.locator('.nft-item-card').count(), 5);
+    assert.equal(
+      await items.locator('.nft-item-card').filter({ hasText: '#2' }).innerText(),
+      '#2\nUnminted',
+    );
+    await items.getByRole('link').first().click();
+    await page.getByRole('heading', { name: 'BIRD #1', level: 1 }).waitFor();
+    await page.reload();
+    await page.getByRole('heading', { name: 'BIRD #1', level: 1 }).waitFor();
+    await page.getByRole('link', { name: /0xabab/ }).waitFor();
+    assert.equal(await page.locator('a[href*="app.plabs.online"]').count(), 0);
+    await page.screenshot({ path: join(artifactDir, 'native-piece-desktop.png'), fullPage: true });
+    await page.goto(`${origin}/privasea/collection/${pool}/999`);
+    await page.getByRole('heading', { name: 'NFT not found' }).waitFor();
+    assert.ok(calls.some((c) => c.method === 'eth_call'));
+  });
+  await run('collection-pagination-and-back-state', 'pages', async (page) => {
+    await page.goto(`${origin}/privasea/collection/${pool}`);
+    await page.getByRole('heading', { name: 'Fixture birds', level: 1 }).waitFor();
+    await page
+      .getByRole('navigation', { name: 'Collection pages' })
+      .getByRole('button', { name: 'Next' })
+      .click();
+    const item = page.locator('.nft-item-card').first();
+    await item.getByText('#25', { exact: true }).waitFor();
+    await item.click();
+    await page.getByRole('heading', { name: 'BIRD #25' }).waitFor();
+    await page.getByRole('link', { name: 'Fixture birds', exact: true }).click();
+    await page.locator('.nft-item-card').first().getByText('#25', { exact: true }).waitFor();
+    await page.getByRole('searchbox', { name: 'Search token ID' }).fill('49');
+    await page.locator('.nft-item-card').first().getByText('#49', { exact: true }).waitFor();
+    await page.getByRole('tab', { name: /Activity/ }).click();
+    await page.getByRole('region', { name: 'Mint activity' }).getByText('BIRD #3').waitFor();
+  });
+  await run('stale-index-never-claims-unminted', 'stale-index', async (page) => {
+    await page.goto(`${origin}/privasea/collection/${pool}`);
+    await page.getByText(/The index is catching up/).waitFor();
+    assert.equal(
+      await page.locator('.nft-item-card').getByText('Unminted', { exact: true }).count(),
+      0,
+    );
+    await page.goto(`${origin}/privasea/collection/${pool}/2`);
+    await page.getByText('Mint status unavailable', { exact: true }).waitFor();
+  });
+  await run(
+    'native-outer-navigation-mobile',
+    'normal',
+    async (page) => {
+      for (const [label, title] of [
+        ['Home', 'Art for everyone.'],
+        ['Market', 'Discover the collection.'],
+        ['Create', 'Create a private collection.'],
+        ['Profile', 'Your NFTs. Your privacy.'],
+      ]) {
+        await page
+          .getByRole('navigation', { name: 'PrivaSea navigation' })
+          .getByRole('link', { name: label, exact: true })
+          .click();
+        await page
+          .getByRole('heading', { name: new RegExp(title.replaceAll('.', '\\.')) })
+          .waitFor();
+        assert.equal(new URL(page.url()).origin, origin);
+        assert.equal(await page.locator('a[href*="app.plabs.online"]').count(), 0);
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth > innerWidth),
+          false,
+        );
+      }
+      await page.goto(`${origin}/privasea/collection/${pool}`);
+      await page.getByRole('heading', { name: 'Fixture birds', level: 1 }).waitFor();
+      await page.getByAltText('Fixture birds #1', { exact: true }).waitFor();
+      await page.screenshot({
+        path: join(artifactDir, 'native-collection-mobile.png'),
+        fullPage: true,
+      });
+    },
+    { width: 390, height: 844 },
+  );
+  await run(
+    'profile-explicit-consent-received-assets-and-account-change',
+    'profile',
+    async (page) => {
+      await page.goto(`${origin}/privasea/profile`);
+      await page.getByRole('button', { name: 'Allow NFT access' }).waitFor();
+      assert.equal(
+        (await page.evaluate(() => window.__nftFixture.calls)).some(
+          (c) => c.method === 'plabs_getNftAssets',
+        ),
+        false,
+      );
+      await page.getByRole('button', { name: 'Allow NFT access' }).click();
+      await page
+        .getByRole('region', { name: 'My private NFTs' })
+        .getByText('Fixture birds #3')
+        .waitFor();
+      await page.getByRole('button', { name: 'Sync wallet NFTs' }).click();
+      await page.getByRole('button', { name: 'Sync wallet NFTs' }).waitFor();
+      assert.ok(
+        (await page.evaluate(() => window.__nftFixture.calls)).some(
+          (c) => c.method === 'plabs_getNftAssets' && c.params[0].sync === true,
+        ),
+      );
+      await page.screenshot({
+        path: join(artifactDir, 'native-profile-desktop.png'),
+        fullPage: true,
+      });
+      await page.evaluate(() => window.__nftFixture.changeAccount());
+      await page.getByRole('heading', { name: 'No NFTs held by this wallet' }).waitFor();
+      assert.equal(await page.getByText('Fixture birds #3').count(), 0);
+    },
+  );
+  await run(
+    'profile-stale-read-does-not-disclose-previous-wallet',
+    'profile-race',
+    async (page) => {
+      await page.goto(`${origin}/privasea/profile`);
+      await page.getByRole('button', { name: 'Allow NFT access' }).click();
+      await page.getByText('Reading wallet NFTs…').waitFor();
+      await page.evaluate(() => {
+        window.__nftFixture.changeAccount();
+        window.__nftFixture.release();
+      });
+      await page.getByRole('heading', { name: 'No NFTs held by this wallet' }).waitFor();
+      assert.equal(await page.getByText('Fixture birds #3').count(), 0);
+    },
+  );
   await run(
     'mobile-unlock-and-continue',
     'locked',
@@ -447,7 +644,7 @@ try {
       await page.getByRole('button', { name: 'Retry', exact: true }).click();
       await page.getByText('MINTED OUT', { exact: true }).waitFor();
       assert.equal(await page.getByRole('button', { name: 'Mint NFT', exact: true }).count(), 0);
-      await page.getByRole('link', { name: 'View on PLabs', exact: true }).waitFor();
+      await page.getByRole('link', { name: 'View collection', exact: true }).waitFor();
     },
   );
   await run('native-mint-reload-and-recover', 'mint', async (page) => {

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useWallet } from '@/features/wallet';
 import { errorMessage } from '@/shared/api/errors';
 
-const mintSchema = z.object({
+export const mintSchema = z.object({
   id: z.string().uuid(),
   chainId: z.literal(1),
   poolAddress: z.string().regex(/^0x[0-9a-f]{40}$/),
